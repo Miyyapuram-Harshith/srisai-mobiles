@@ -122,8 +122,8 @@ export const AddressModal: React.FC<AddressModalProps> = ({ isOpen, onClose }) =
     }} className="animate-fade">
       
       <div className="glass animate-slide" style={{
-        width: '100%',
-        maxWidth: '560px',
+        width: 'min(100%, 560px)',
+        maxWidth: '100%',
         maxHeight: '85vh',
         borderRadius: '24px',
         border: '1px solid var(--border-color)',

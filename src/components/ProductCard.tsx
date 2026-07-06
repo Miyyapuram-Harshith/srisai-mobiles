@@ -472,7 +472,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
       </div>
 
       {/* Action Buttons */}
-      <div style={{ display: 'flex', gap: '6px' }}>
+      <div className="product-card-actions" style={{ gap: '6px' }}>
         <button
           onClick={handleAddToCart}
           className="premium-btn btn-secondary"

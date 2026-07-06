@@ -580,4 +580,88 @@ button, input, select, textarea {
   cursor: pointer;
 }
 
+/* SriSai Mobiles Mobile Responsiveness improvements */
+
+/* Safety image/video scale limits */
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Brand name logo text hiding on very small devices */
+@media (max-width: 480px) {
+  .logo-text {
+    display: none !important;
+  }
+}
+
+/* Product card actions flex wrapping on mobile screens */
+.product-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .product-card-actions button {
+    font-size: 11px !important;
+    padding: 6px 8px !important;
+  }
+  .product-card-actions .btn-primary {
+    flex: 1 0 100% !important; /* Forces Buy Now to wrap to its own line */
+    margin-top: 4px;
+  }
+}
+
+/* Drawer width limit safety features */
+.glass.animate-slide,
+.glass-card.animate-slide {
+  width: min(100%, 460px);
+  max-width: 100%;
+}
+
+/* Modal responsive grid stacking layout */
+.accessory-modal-grid {
+  grid-template-columns: 1fr 1.2fr;
+}
+
+@media (max-width: 768px) {
+  .accessory-modal-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Hero Carousel responsive mobile scale settings */
+@media (max-width: 768px) {
+  .hero-carousel-container {
+    height: 240px !important;
+    margin: 10px 0 !important;
+  }
+}
+
+/* Banners overlay titles sizing */
+.banner-overlay-text h2 {
+  font-size: 32px;
+}
+
+@media (max-width: 768px) {
+  .banner-overlay-text {
+    bottom: 16px !important;
+    left: 16px !important;
+    right: 16px !important;
+  }
+  .banner-overlay-text h2 {
+    font-size: 18px !important;
+    margin-bottom: 6px !important;
+  }
+  .banner-overlay-text div {
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+  }
+}
+
+
 

@@ -163,7 +163,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))',
         gap: '40px',
         marginBottom: '60px'
       }}>
@@ -538,7 +538,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
         
         {/* Brand New sealed details */}
         {device.deviceType === 'brand_new' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', fontSize: '13px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px' }}>
             <div>Factory Sealed: <strong>{device.factorySealed ? 'Yes (Unopened Box)' : 'No'}</strong></div>
             <div>Invoice Available: <strong>{device.invoiceAvailable ? 'Yes (Official Store Receipt)' : 'No'}</strong></div>
             <div>Brand Warranty: <strong>{device.officialBrandWarrantyAvailable ? `${device.warrantyDuration} Brand Warranty` : 'No'}</strong></div>
@@ -549,7 +549,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
         {/* Used phone diagnostics */}
         {device.deviceType === 'used' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', fontSize: '13px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '16px', fontSize: '13px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
               <div>Condition Grade: <strong>{getGradeText(device.deviceConditionGrade)}</strong></div>
               <div>Battery Health: <strong>{device.batteryHealth}%</strong></div>
               <div>Ownership: <strong style={{ textTransform: 'capitalize' }}>{device.ownershipDetails?.replace(/_/g, ' ')}</strong></div>
@@ -565,7 +565,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
               </strong></div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px' }}>
               {/* Accessory checks */}
               <div>
                 <h4 style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Accessories Included</h4>
@@ -632,7 +632,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
         {/* Open Box */}
         {device.deviceType === 'open_box' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', fontSize: '13px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px' }}>
             <div>Box Included: <strong>{device.openBoxBoxAvailable ? 'Yes' : 'No'}</strong></div>
             <div>All Inbox Accessories: <strong>{device.openBoxAccessoriesAvailable ? 'Yes' : 'No'}</strong></div>
             <div>Remaining Warranty: <strong>{device.openBoxWarrantyRemaining}</strong></div>
@@ -643,7 +643,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
         {/* Refurbished */}
         {device.deviceType === 'refurbished' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', fontSize: '13px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px' }}>
             <div>Refurbished Grade: <strong>{device.refurbishedGrade}</strong></div>
             <div>Refurbished By: <strong>{device.refurbishedBy}</strong></div>
             <div>Warranty Offered: <strong>{device.refurbishedWarrantyOffered}</strong></div>
@@ -654,7 +654,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
         {/* Demo Unit */}
         {device.deviceType === 'demo_unit' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', fontSize: '13px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px' }}>
             <div>Store Demo Duration: <strong>{device.demoStoreUsageDuration}</strong></div>
             <div>Total Screen Usage: <strong>{device.demoUsageHours}</strong></div>
             <div>Cosmetic State: <strong>{device.demoPhysicalCondition}</strong></div>
@@ -670,7 +670,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
           <Sparkles style={{ color: 'var(--accent)' }} size={20} />
           <span>Product Key Features</span>
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '16px' }}>
           {device.features.map((feature, idx) => (
             <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
               <div style={{ 
@@ -702,7 +702,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
                     padding: '12px', 
                     fontWeight: 700, 
                     color: 'var(--text-muted)', 
-                    width: '200px',
+                    width: '35%',
+                    minWidth: '100px',
                     textTransform: 'capitalize' 
                   }}>
                     {key.replace(/([A-Z])/g, ' $1')}
@@ -723,7 +724,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
           <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '16px' }}>More from {device.brand}</h2>
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 250px), 1fr))', 
             gap: '20px' 
           }}>
             {relatedProducts.map(d => (
@@ -743,7 +744,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
           <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '16px' }}>Similar Smartphones</h2>
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 250px), 1fr))', 
             gap: '20px' 
           }}>
             {similarProducts.map(d => (
@@ -763,7 +764,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
           <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '16px' }}>Recently Viewed Products</h2>
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 250px), 1fr))', 
             gap: '20px' 
           }}>
             {viewedDevices.map(d => (

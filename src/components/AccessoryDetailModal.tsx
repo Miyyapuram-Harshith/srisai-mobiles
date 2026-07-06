@@ -70,11 +70,11 @@ export const AccessoryDetailModal: React.FC<AccessoryDetailModalProps> = ({
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       backdropFilter: 'blur(6px)', padding: '16px'
     }}>
-      <div className="glass-card animate-scale-up" style={{
-        width: '100%', maxWidth: '850px', maxHeight: '90vh',
+      <div className="glass-card animate-scale-up accessory-modal-grid" style={{
+        width: 'min(100%, 850px)', maxHeight: '90vh',
         overflowY: 'auto', borderRadius: '24px', padding: '24px',
         border: '1px solid var(--border-color)', position: 'relative',
-        display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '24px'
+        display: 'grid', gap: '24px'
       }}>
         
         {/* Close Button */}

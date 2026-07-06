@@ -86,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({
               (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" fill="%233b82f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="20" font-family="Outfit">S</text></svg>';
             }}
           />
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="logo-text" style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ 
               fontFamily: 'var(--font-display)', 
               fontWeight: 800, 

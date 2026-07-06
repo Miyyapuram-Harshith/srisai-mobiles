@@ -173,6 +173,8 @@ export const ProductCompare: React.FC<ProductCompareProps> = ({ isOpen, onClose 
           <div style={{
             flex: 1,
             overflowY: 'auto',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
             padding: '24px'
           }}>
             

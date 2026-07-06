@@ -174,8 +174,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     }} className="animate-fade">
       
       <div className="glass animate-slide" style={{
-        width: '100%',
-        maxWidth: '420px',
+        width: 'min(100%, 420px)',
+        maxWidth: '100%',
         borderRadius: '24px',
         border: '1px solid var(--border-color)',
         padding: '30px 24px',

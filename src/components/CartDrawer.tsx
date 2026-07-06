@@ -375,8 +375,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         onClick={(e) => e.stopPropagation()}
         className="glass animate-slide"
         style={{
-          width: '100%',
-          maxWidth: '460px',
+          width: 'min(100%, 460px)',
+          maxWidth: '100%',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',

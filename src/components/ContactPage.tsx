@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Phone, MessageCircle, MapPin, Clock, Send, Compass, ExternalLink } from 'lucide-react';
 
 const Instagram: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 20, style }) => (
-  <svg 
-    viewBox="0 0 24 24" 
-    width={size} 
-    height={size} 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    fill="none" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    stroke="currentColor"
+    strokeWidth="2"
+    fill="none"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     style={style}
   >
     <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
@@ -34,9 +34,9 @@ export const ContactPage: React.FC = () => {
     const R = 6371; // Radius of Earth in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
+    const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return parseFloat((R * c).toFixed(1));
@@ -67,7 +67,7 @@ export const ContactPage: React.FC = () => {
 
   return (
     <div className="animate-fade" style={{ padding: '20px 0' }}>
-      
+
       {/* Title */}
       <div style={{ marginBottom: '30px', textAlign: 'center' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 800, background: 'linear-gradient(90deg, var(--primary), var(--accent))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block' }}>
@@ -84,10 +84,10 @@ export const ContactPage: React.FC = () => {
         gap: '30px',
         alignItems: 'start'
       }}>
-        
+
         {/* LEFT COLUMN: CONTACT DETAILS CARDS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
+
           {/* Geolocation Distance Alert */}
           {distance !== null && (
             <div style={{
@@ -109,23 +109,15 @@ export const ContactPage: React.FC = () => {
 
           {/* Store Info Card */}
           <div className="glass-card" style={{ padding: '24px', borderRadius: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               <MapPin size={20} style={{ color: 'var(--primary)' }} />
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>Showroom Locations</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>Shop Location</h2>
             </div>
 
-            <div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Primary Address</span>
-              <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>Sri Sai Mobiles</strong>
-              <p style={{ fontSize: '13px', color: 'var(--text-main)', margin: '4px 0 0 0', lineHeight: 1.4 }}>
-                Opposite Big C, Angadi Bazar, Jagtial,<br />
-                Telangana - 505327, India
-              </p>
-            </div>
 
             <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '12px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Second Shop Landmark</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Shop Landmark</span>
               <p style={{ fontSize: '13px', color: 'var(--text-main)', margin: 0, lineHeight: 1.4 }}>
                 Noor Masjid, Yawar Road, Jagtial,<br />
                 Telangana - 505327
@@ -133,9 +125,9 @@ export const ContactPage: React.FC = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '8px' }}>
-              <a 
-                href={googleMapsUrl} 
-                target="_blank" 
+              <a
+                href={googleMapsUrl}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn btn-primary"
                 style={{ fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
@@ -143,9 +135,9 @@ export const ContactPage: React.FC = () => {
                 <Compass size={14} />
                 <span>Get Directions</span>
               </a>
-              <a 
-                href={googleMapsUrl} 
-                target="_blank" 
+              <a
+                href={googleMapsUrl}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn btn-secondary"
                 style={{ fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
@@ -159,7 +151,7 @@ export const ContactPage: React.FC = () => {
 
           {/* Business Hours & Contact numbers */}
           <div className="glass-card" style={{ padding: '24px', borderRadius: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               <Clock size={20} style={{ color: 'var(--accent)' }} />
               <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>Business Hours & Contacts</h2>
@@ -183,25 +175,25 @@ export const ContactPage: React.FC = () => {
 
             {/* Quick Actions call */}
             <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <a 
+              <a
                 href="tel:+918688303048"
                 className="premium-btn btn-primary"
-                style={{ 
-                  width: '100%', padding: '12px', borderRadius: '12px', display: 'flex', 
-                  alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700 
+                style={{
+                  width: '100%', padding: '12px', borderRadius: '12px', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700
                 }}
               >
                 <Phone size={16} />
                 <span>Call Now: +91 8688303048</span>
               </a>
 
-              <a 
+              <a
                 href={`https://api.whatsapp.com/send?phone=918688303048&text=${encodeURIComponent("Hello Sri Sai Mobiles, I need assistance regarding your phones.")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn btn-secondary"
-                style={{ 
-                  width: '100%', padding: '12px', borderRadius: '12px', display: 'flex', 
+                style={{
+                  width: '100%', padding: '12px', borderRadius: '12px', display: 'flex',
                   alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700,
                   borderColor: '#25D366', color: '#128C7E', backgroundColor: 'rgba(37, 211, 102, 0.08)'
                 }}
@@ -215,7 +207,7 @@ export const ContactPage: React.FC = () => {
 
           {/* Social connections */}
           <div className="glass-card" style={{ padding: '24px', borderRadius: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               <Instagram size={20} style={{ color: '#E1306C' }} />
               <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>Social Connections</h2>
@@ -252,9 +244,9 @@ export const ContactPage: React.FC = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
-              <a 
-                href="https://www.instagram.com/sri_sai_mobiles3048/" 
-                target="_blank" 
+              <a
+                href="https://www.instagram.com/sri_sai_mobiles3048/"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn btn-secondary"
                 style={{ fontSize: '11px', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
@@ -262,10 +254,10 @@ export const ContactPage: React.FC = () => {
                 <Instagram size={12} />
                 <span>Follow Instagram</span>
               </a>
-              
-              <a 
-                href={whatsappChannelUrl} 
-                target="_blank" 
+
+              <a
+                href={whatsappChannelUrl}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn btn-secondary"
                 style={{ fontSize: '11px', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
