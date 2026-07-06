@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Check, ArrowRight, GitCompare } from 'lucide-react';
+import { X, Check, ArrowRight, GitCompare, Plus } from 'lucide-react';
 
 interface ProductCompareProps {
   isOpen: boolean;
@@ -230,13 +230,36 @@ export const ProductCompare: React.FC<ProductCompareProps> = ({ isOpen, onClose 
                       verticalAlign: 'middle',
                       backgroundColor: 'rgba(255,255,255,0.01)'
                     }}>
-                      <div style={{ 
-                        border: '2px dashed var(--border-color)', 
-                        borderRadius: '12px',
-                        padding: '30px 10px',
-                        fontSize: '12px'
-                      }}>
-                        Add another device
+                      <div 
+                        onClick={() => {
+                          onClose();
+                          navigateTo('home');
+                        }}
+                        style={{ 
+                          border: '2px dashed var(--border-color)', 
+                          borderRadius: '12px',
+                          padding: '24px 10px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          color: 'var(--primary)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          transition: 'border-color 0.2s, color 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--primary)';
+                          e.currentTarget.style.color = 'var(--text-main)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--border-color)';
+                          e.currentTarget.style.color = 'var(--primary)';
+                        }}
+                      >
+                        <Plus size={16} />
+                        <span>Add another device</span>
                       </div>
                     </th>
                   ))}
