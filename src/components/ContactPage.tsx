@@ -80,7 +80,7 @@ export const ContactPage: React.FC = () => {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
         gap: '30px',
         alignItems: 'start'
       }}>
@@ -124,13 +124,13 @@ export const ContactPage: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '8px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '8px' }}>
               <a
                 href={googleMapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn btn-primary"
-                style={{ fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ flex: '1 1 120px', fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
                 <Compass size={14} />
                 <span>Get Directions</span>
@@ -140,10 +140,10 @@ export const ContactPage: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn btn-secondary"
-                style={{ fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ flex: '1 1 120px', fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                <span>Open in Maps</span>
-                <ExternalLink size={12} />
+                <Compass size={14} />
+                <span>Open in App</span>
               </a>
             </div>
 
@@ -243,13 +243,13 @@ export const ContactPage: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '4px' }}>
               <a
                 href="https://www.instagram.com/sri_sai_mobiles3048/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn btn-secondary"
-                style={{ fontSize: '11px', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                style={{ flex: '1 1 120px', fontSize: '11px', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
               >
                 <Instagram size={12} />
                 <span>Follow Instagram</span>
@@ -260,7 +260,7 @@ export const ContactPage: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn btn-secondary"
-                style={{ fontSize: '11px', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                style={{ flex: '1 1 120px', fontSize: '11px', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
               >
                 <Send size={12} />
                 <span>Join Channel</span>

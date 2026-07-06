@@ -280,7 +280,14 @@ button, input, select, textarea {
 }
 
 /* Viewport responsive columns and gaps */
-@media (max-width: 768px) {
+@media (max-width: 480px) {
+  .grid-responsive {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
   .grid-responsive {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;

@@ -1124,13 +1124,13 @@ export const App: React.FC = () => {
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                 🕒 Mon-Sat: 10:00 AM - 09:00 PM | Sunday: Closed
               </div>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
                 <a 
                   href="https://www.google.com/maps/place/SRI+SAI+MOBILES/@18.7930915,78.9185849,17z/data=!3m1!4b1!4m6!3m5!1s0x3bcd138e3c1d0c5f:0x306a24477dfe4ccb!8m2!3d18.7930915!4d78.9185849!16s%2Fg%2F11bwyytv11" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="premium-btn btn-primary"
-                  style={{ flex: 1, fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  style={{ flex: '1 1 120px', fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
                   <Compass size={14} />
                   <span>Get Directions</span>
@@ -1138,7 +1138,7 @@ export const App: React.FC = () => {
                 <a 
                   href="tel:+918688303048"
                   className="premium-btn btn-secondary"
-                  style={{ flex: 1, fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  style={{ flex: '1 1 120px', fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
                   <Phone size={14} />
                   <span>Call Now</span>
