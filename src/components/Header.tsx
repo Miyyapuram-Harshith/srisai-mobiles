@@ -55,9 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
       borderBottom: '1px solid var(--border-color)',
       padding: '12px 0'
     }}>
-      {/* ========================================================================= */}
-      /* DESKTOP HEADER ROW                                                       */
-      {/* ========================================================================= */}
+      {/* DESKTOP HEADER ROW */}
       <div className="container desktop-header-row" style={{
         display: 'flex',
         alignItems: 'center',
