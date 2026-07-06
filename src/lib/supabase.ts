@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Device, Banner, Order, PermissionRole, Accessory, FlashSale } from '../types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://qhkgoasyvbawugdsdhko.supabase.co/rest/v1/';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://qhkgoasyvbawugdsdhko.supabase.co/';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFoa2dvYXN5dmJhd3VnZHNkaGtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNDEwNDcsImV4cCI6MjA5ODkxNzA0N30.hb8nDimWYrix3qTK1_NQWiHXLpZXeAVq_3Oo__OkZbs';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
