@@ -1,0 +1,1217 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { 
+  Device, Banner, FlashSale, AdminUser, UserSession, 
+  Address, CartItem, Order, SystemNotification, OrderItem,
+  OrderStatus, PermissionRole, AuditLog, WhatsAppSettings, WhatsAppAnalytics,
+  InstagramPost, Accessory, InstagramSettings
+} from '../types';
+import { INITIAL_DEVICES, INITIAL_BANNERS, INITIAL_FLASH_SALES, INITIAL_ADMINS, INITIAL_ORDERS, INITIAL_ACCESSORIES } from '../utils/seedData';
+import { checkPincodeServiceability, getEstimatedDateString } from '../utils/pincodeService';
+
+interface AppContextType {
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  currentUser: UserSession | null;
+  setCurrentUser: (user: UserSession | null) => void;
+  devices: Device[];
+  banners: Banner[];
+  flashSales: FlashSale[];
+  admins: AdminUser[];
+  addresses: Address[];
+  selectedAddress: Address | null;
+  setSelectedAddress: (addr: Address | null) => void;
+  cart: CartItem[];
+  wishlist: string[];
+  comparisonList: string[];
+  orders: Order[];
+  notifications: SystemNotification[];
+  searchHistory: string[];
+  recentlyViewed: string[];
+  currentRoute: string; // Hash routing: e.g., 'home', 'product/apple-iphone-15-pro-max', 'admin', etc.
+  
+  // Navigation
+  navigateTo: (route: string) => void;
+  
+  // Shop operations
+  addToCart: (deviceId: string, color: string) => void;
+  updateCartQty: (deviceId: string, color: string, qty: number) => void;
+  removeFromCart: (deviceId: string, color: string) => void;
+  clearCart: () => void;
+  toggleWishlist: (deviceId: string) => void;
+  addToCompare: (deviceId: string) => boolean;
+  removeFromCompare: (deviceId: string) => void;
+  addAddress: (addr: Omit<Address, 'id'>) => void;
+  removeAddress: (id: string) => void;
+  addSearchQuery: (query: string) => void;
+  clearSearchHistory: () => void;
+  addRecentlyViewed: (deviceId: string) => void;
+  createOrder: (
+    address: Address, 
+    couponCode: string,
+    deliveryType: 'home_delivery' | 'store_pickup',
+    paymentMethod: Order['paymentMethod'],
+    isPreorder?: boolean,
+    pickupDate?: string,
+    pickupTime?: string
+  ) => Order | null;
+  
+  // ERP operations
+  updateOrderStatus: (orderId: string, status: OrderStatus, updatedBy?: string) => void;
+  updateOrderDelivery: (orderId: string, deliveryDetails: Partial<Order>) => void;
+  updateOrderPayment: (orderId: string, paymentDetails: Partial<Order>) => void;
+  addOrderNote: (orderId: string, note: string) => void;
+  issueRefund: (orderId: string, refundDetails: { amount: number; method: string; reason?: string }) => void;
+  addCallLog: (orderId: string, call: { duration: string; staffName: string; summary: string }) => void;
+  
+  // Audit Logs
+  auditLogs: AuditLog[];
+  addAuditLog: (action: string, adminName: string) => void;
+  clearAuditLogs: () => void;
+
+  // Permissions switch
+  adminRole: PermissionRole;
+  setAdminRole: (role: PermissionRole) => void;
+
+  // WhatsApp Support Settings & Analytics
+  whatsAppSettings: WhatsAppSettings;
+  setWhatsAppSettings: (settings: WhatsAppSettings) => void;
+  whatsAppAnalytics: WhatsAppAnalytics;
+  trackWhatsAppClick: (category: 'product' | 'cart' | 'order' | 'general', deviceId?: string) => void;
+  clearWhatsAppAnalytics: () => void;
+
+  // Instagram Posts
+  instagramPosts: InstagramPost[];
+  addInstagramPost: (post: Omit<InstagramPost, 'id' | 'createdAt' | 'views' | 'clicks'>) => void;
+  updateInstagramPost: (id: string, updates: Partial<InstagramPost>) => void;
+  deleteInstagramPost: (id: string) => void;
+  reorderInstagramPosts: (posts: InstagramPost[]) => void;
+  instagramSettings: InstagramSettings;
+  updateInstagramSettings: (settings: Partial<InstagramSettings>) => void;
+  trackInstagramPostView: (id: string) => void;
+  trackInstagramPostClick: (id: string) => void;
+  
+  // Accessories state & management
+  accessories: Accessory[];
+  saveAccessory: (accessory: Omit<Accessory, 'id' | 'views' | 'sales' | 'createdAt'> & { id?: string }) => void;
+  deleteAccessory: (id: string) => void;
+  incrementAccessoryViews: (id: string) => void;
+  incrementAccessorySales: (id: string, quantity: number) => void;
+  
+  // Admin operations
+  addAdminEmail: (email: string, name: string) => boolean;
+  removeAdminEmail: (email: string) => void;
+  toggleAdminState: (email: string) => void;
+  saveDevice: (device: Omit<Device, 'id' | 'views' | 'sales'> & { id?: string }) => void;
+  duplicateDevice: (id: string) => void;
+  deleteDevice: (id: string) => void;
+  archiveDevice: (id: string) => void;
+  saveBanner: (banner: Omit<Banner, 'id'> & { id?: string }) => void;
+  deleteBanner: (id: string) => void;
+  reorderBanners: (list: Banner[]) => void;
+  saveFlashSale: (sale: Omit<FlashSale, 'id' | 'soldCount'> & { id?: string }) => void;
+  deleteFlashSale: (id: string) => void;
+  
+  // Notifications
+  addNotification: (type: SystemNotification['type'], message: string, meta?: SystemNotification['meta']) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  
+  // Helper to count views
+  incrementDeviceViews: (id: string) => void;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Theme state
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('srisai_theme');
+    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+  });
+
+  // Navigation route (hash based)
+  const [currentRoute, setCurrentRoute] = useState<string>(() => {
+    const hash = window.location.hash.substring(1);
+    return hash || 'home';
+  });
+
+  // Core databases
+  const [currentUser, setCurrentUserState] = useState<UserSession | null>(() => {
+    const saved = localStorage.getItem('srisai_session');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [devices, setDevices] = useState<Device[]>(() => {
+    const saved = localStorage.getItem('srisai_devices');
+    return saved ? JSON.parse(saved) : INITIAL_DEVICES;
+  });
+
+  const [banners, setBanners] = useState<Banner[]>(() => {
+    const saved = localStorage.getItem('srisai_banners');
+    return saved ? JSON.parse(saved) : INITIAL_BANNERS;
+  });
+
+  const [flashSales, setFlashSales] = useState<FlashSale[]>(() => {
+    const saved = localStorage.getItem('srisai_flash_sales');
+    return saved ? JSON.parse(saved) : INITIAL_FLASH_SALES;
+  });
+
+  const [admins, setAdmins] = useState<AdminUser[]>(() => {
+    const saved = localStorage.getItem('srisai_admins');
+    return saved ? JSON.parse(saved) : INITIAL_ADMINS;
+  });
+
+  const [addresses, setAddresses] = useState<Address[]>(() => {
+    const saved = localStorage.getItem('srisai_addresses');
+    if (saved) return JSON.parse(saved);
+    // Seed default addresses
+    return [
+      {
+        id: 'addr-default-1',
+        fullName: 'Sri Sai Mobiles HQ',
+        phone: '8688303048',
+        pincode: '505327',
+        addressLine: 'Opposite Big C, Angadi Bazar',
+        city: 'Jagitial',
+        state: 'Telangana',
+        isDefault: true
+      }
+    ];
+  });
+
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(() => {
+    const saved = localStorage.getItem('srisai_selected_address');
+    if (saved) return JSON.parse(saved);
+    return addresses.find(a => a.isDefault) || null;
+  });
+
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    const saved = localStorage.getItem('srisai_cart');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [wishlist, setWishlist] = useState<string[]>(() => {
+    const saved = localStorage.getItem('srisai_wishlist');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [comparisonList, setComparisonList] = useState<string[]>(() => {
+    const saved = localStorage.getItem('srisai_compare');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const saved = localStorage.getItem('srisai_orders');
+    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+  });
+
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
+    const saved = localStorage.getItem('srisai_audit_logs');
+    if (saved) return JSON.parse(saved);
+    return [
+      {
+        id: 'audit-1',
+        adminName: 'SriSai Super Admin',
+        action: 'System Initialized & Configured Seed Catalog',
+        date: new Date().toLocaleDateString('en-IN'),
+        time: '10:00 AM',
+        ipAddress: '192.168.1.1'
+      }
+    ];
+  });
+
+  const [adminRole, setAdminRole] = useState<PermissionRole>(() => {
+    const saved = localStorage.getItem('srisai_admin_role');
+    return (saved as PermissionRole) || 'super_admin';
+  });
+
+  const [whatsAppSettings, setWhatsAppSettings] = useState<WhatsAppSettings>(() => {
+    const saved = localStorage.getItem('srisai_whatsapp_settings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.salesNumber === '9876543210' || parsed.salesNumber === '9876543213') {
+        localStorage.removeItem('srisai_whatsapp_settings');
+      } else {
+        return parsed;
+      }
+    }
+    return {
+      enabled: true,
+      countryCode: '91',
+      salesNumber: '8688303048',
+      supportNumber: '8688303048',
+      warrantyNumber: '8688303048',
+      usedPhonesNumber: '8688303048',
+      enableProductInquiry: true,
+      enableCartSupport: true,
+      enableOrderSupport: true,
+      position: 'bottom-right',
+      workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      openingTime: '10:00',
+      closingTime: '21:00',
+      productTemplate: "Hello Sri Sai Mobiles,\nI am interested in:\n\nProduct: {product_name}\nStorage Variant: {variant}\nPrice: ₹{price}\n\nCan you provide availability details?",
+      cartTemplate: "Hello Sri Sai Mobiles,\nI would like assistance with my cart items.",
+      orderTemplate: "Hello Sri Sai Mobiles,\nI need help regarding my order.\n\nOrder ID: {order_id}\nPhone Number: {phone}",
+      generalTemplate: "Hello Sri Sai Mobiles,\nI need assistance regarding your devices."
+    };
+  });
+
+  const [whatsAppAnalytics, setWhatsAppAnalytics] = useState<WhatsAppAnalytics>(() => {
+    const saved = localStorage.getItem('srisai_whatsapp_analytics');
+    if (saved) return JSON.parse(saved);
+    return {
+      totalClicks: 0,
+      productClicks: 0,
+      cartClicks: 0,
+      orderClicks: 0,
+      mostContactedProducts: {}
+    };
+  });
+
+  const [notifications, setNotifications] = useState<SystemNotification[]>(() => {
+    const saved = localStorage.getItem('srisai_notifications');
+    if (saved) return JSON.parse(saved);
+    // Seed standard mock notification
+    return [
+      {
+        id: 'notif-1',
+        type: 'low_stock',
+        message: 'Product "Nothing Phone (2)" is running low on stock! Only 2 units remaining.',
+        timestamp: new Date(Date.now() - 30 * 60000).toISOString(),
+        read: false,
+        meta: { deviceId: 'nothing-phone-2' }
+      }
+    ];
+  });
+
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    const saved = localStorage.getItem('srisai_search_history');
+    return saved ? JSON.parse(saved) : ['iPhone', 'Galaxy Ultra', 'OnePlus 12'];
+  });
+
+  const [recentlyViewed, setRecentlyViewed] = useState<string[]>(() => {
+    const saved = localStorage.getItem('srisai_recently_viewed');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [instagramPosts, setInstagramPosts] = useState<InstagramPost[]>(() => {
+    const saved = localStorage.getItem('srisai_instagram_posts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [accessories, setAccessories] = useState<Accessory[]>(() => {
+    const saved = localStorage.getItem('srisai_accessories');
+    return saved ? JSON.parse(saved) : INITIAL_ACCESSORIES;
+  });
+
+  const [instagramSettings, setInstagramSettings] = useState<InstagramSettings>(() => {
+    const saved = localStorage.getItem('srisai_instagram_settings');
+    return saved ? JSON.parse(saved) : {
+      showSection: true,
+      sectionTitle: '📸 Latest From Instagram',
+      sectionSubtitle: 'Join 40,000+ followers and stay updated with our latest arrivals and offers.',
+      postsCount: 6,
+      layout: 'grid',
+      autoSlide: false,
+      autoSlideInterval: 5,
+      showFollowButton: true,
+      showSectionTitle: true,
+      followHandle: '@sri_sai_mobiles3048',
+      followersCount: '40K+'
+    };
+  });
+
+
+  // Listen to hash router changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1);
+      setCurrentRoute(hash || 'home');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const navigateTo = (route: string) => {
+    window.location.hash = route;
+    setCurrentRoute(route);
+    window.scrollTo(0, 0);
+  };
+
+  // Sync state to local storage
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('srisai_theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_devices', JSON.stringify(devices));
+  }, [devices]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_banners', JSON.stringify(banners));
+  }, [banners]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_flash_sales', JSON.stringify(flashSales));
+  }, [flashSales]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_admins', JSON.stringify(admins));
+  }, [admins]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_addresses', JSON.stringify(addresses));
+    if (selectedAddress && !addresses.find(a => a.id === selectedAddress.id)) {
+      setSelectedAddress(addresses.find(a => a.isDefault) || null);
+    }
+  }, [addresses]);
+
+  useEffect(() => {
+    if (selectedAddress) {
+      localStorage.setItem('srisai_selected_address', JSON.stringify(selectedAddress));
+    } else {
+      localStorage.removeItem('srisai_selected_address');
+    }
+  }, [selectedAddress]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_wishlist', JSON.stringify(wishlist));
+  }, [wishlist]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_compare', JSON.stringify(comparisonList));
+  }, [comparisonList]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_orders', JSON.stringify(orders));
+  }, [orders]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_audit_logs', JSON.stringify(auditLogs));
+  }, [auditLogs]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_admin_role', adminRole);
+  }, [adminRole]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_whatsapp_settings', JSON.stringify(whatsAppSettings));
+  }, [whatsAppSettings]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_whatsapp_analytics', JSON.stringify(whatsAppAnalytics));
+  }, [whatsAppAnalytics]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_search_history', JSON.stringify(searchHistory));
+  }, [searchHistory]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_recently_viewed', JSON.stringify(recentlyViewed));
+  }, [recentlyViewed]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_instagram_posts', JSON.stringify(instagramPosts));
+  }, [instagramPosts]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_accessories', JSON.stringify(accessories));
+  }, [accessories]);
+
+  useEffect(() => {
+    localStorage.setItem('srisai_instagram_settings', JSON.stringify(instagramSettings));
+  }, [instagramSettings]);
+
+
+  const setCurrentUser = (session: UserSession | null) => {
+    setCurrentUserState(session);
+    if (session) {
+      localStorage.setItem('srisai_session', JSON.stringify(session));
+    } else {
+      localStorage.removeItem('srisai_session');
+    }
+  };
+
+  const toggleTheme = () => {
+    setTheme(t => t === 'light' ? 'dark' : 'light');
+  };
+
+  // Cart operations
+  const addToCart = (deviceId: string, color: string) => {
+    setCart(prevCart => {
+      const existing = prevCart.find(item => item.deviceId === deviceId && item.selectedColor === color);
+      if (existing) {
+        return prevCart.map(item => 
+          (item.deviceId === deviceId && item.selectedColor === color)
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prevCart, { deviceId, selectedColor: color, quantity: 1 }];
+    });
+  };
+
+  const updateCartQty = (deviceId: string, color: string, qty: number) => {
+    if (qty <= 0) {
+      removeFromCart(deviceId, color);
+      return;
+    }
+    setCart(prevCart => 
+      prevCart.map(item => 
+        (item.deviceId === deviceId && item.selectedColor === color)
+          ? { ...item, quantity: qty }
+          : item
+      )
+    );
+  };
+
+  const removeFromCart = (deviceId: string, color: string) => {
+    setCart(prevCart => prevCart.filter(item => !(item.deviceId === deviceId && item.selectedColor === color)));
+  };
+
+  const clearCart = () => setCart([]);
+
+  // Wishlist operations
+  const toggleWishlist = (deviceId: string) => {
+    setWishlist(prev => 
+      prev.includes(deviceId) ? prev.filter(id => id !== deviceId) : [...prev, deviceId]
+    );
+  };
+
+  // Comparison operations (max 4 devices)
+  const addToCompare = (deviceId: string): boolean => {
+    if (comparisonList.includes(deviceId)) return true;
+    if (comparisonList.length >= 4) return false;
+    setComparisonList(prev => [...prev, deviceId]);
+    return true;
+  };
+
+  const removeFromCompare = (deviceId: string) => {
+    setComparisonList(prev => prev.filter(id => id !== deviceId));
+  };
+
+  // Address operations
+  const addAddress = (addr: Omit<Address, 'id'>) => {
+    const id = `addr-${Date.now()}`;
+    const newAddr: Address = { ...addr, id };
+    
+    setAddresses(prev => {
+      let updated = prev;
+      if (newAddr.isDefault) {
+        updated = prev.map(a => ({ ...a, isDefault: false }));
+      }
+      const list = [...updated, newAddr];
+      if (list.length === 1) {
+        list[0].isDefault = true;
+      }
+      return list;
+    });
+
+    if (newAddr.isDefault || addresses.length === 0) {
+      setSelectedAddress(newAddr);
+    }
+  };
+
+  const removeAddress = (id: string) => {
+    setAddresses(prev => prev.filter(a => a.id !== id));
+  };
+
+  // Search History
+  const addSearchQuery = (query: string) => {
+    const q = query.trim();
+    if (!q) return;
+    setSearchHistory(prev => {
+      const filtered = prev.filter(item => item.toLowerCase() !== q.toLowerCase());
+      return [q, ...filtered].slice(0, 10); // store last 10
+    });
+  };
+
+  const clearSearchHistory = () => setSearchHistory([]);
+
+  // Recently Viewed
+  const addRecentlyViewed = (deviceId: string) => {
+    setRecentlyViewed(prev => {
+      const filtered = prev.filter(id => id !== deviceId);
+      return [deviceId, ...filtered].slice(0, 8); // store last 8
+    });
+  };
+
+  // Device view counts
+  const incrementDeviceViews = (id: string) => {
+    setDevices(prev => 
+      prev.map(d => d.id === id ? { ...d, views: d.views + 1 } : d)
+    );
+  };
+  // Order Placement
+  const createOrder = (
+    address: Address, 
+    couponCode: string,
+    deliveryType: 'home_delivery' | 'store_pickup',
+    paymentMethod: Order['paymentMethod'],
+    isPreorder = false,
+    pickupDate?: string,
+    pickupTime?: string
+  ): Order | null => {
+    if (cart.length === 0) return null;
+
+    const orderItems: OrderItem[] = cart.map(cartItem => {
+      const device = devices.find(d => d.id === cartItem.deviceId);
+      const accessory = !device ? accessories.find(a => a.id === cartItem.deviceId) : null;
+      if (!device && !accessory) throw new Error('Product not found in catalog');
+      
+      if (device) {
+        return {
+          deviceId: device.id,
+          modelName: device.modelName,
+          brand: device.brand,
+          color: cartItem.selectedColor,
+          ram: device.ram,
+          storage: device.storage,
+          quantity: cartItem.quantity,
+          price: device.offerPrice,
+          imageUrl: device.images[0] || 'logo.jpg'
+        };
+      } else {
+        return {
+          deviceId: accessory!.id,
+          modelName: accessory!.name,
+          brand: accessory!.brand,
+          color: cartItem.selectedColor,
+          ram: 'N/A',
+          storage: 'N/A',
+          quantity: cartItem.quantity,
+          price: accessory!.offerPrice,
+          imageUrl: accessory!.images[0] || 'logo.jpg'
+        };
+      }
+    });
+
+    const subtotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const normCoupon = couponCode.trim().toUpperCase();
+    let discount = 0;
+    if (normCoupon === 'SAI10') {
+      discount = Math.round(subtotal * 0.1);
+    } else if (normCoupon === 'NEW5') {
+      discount = Math.round(subtotal * 0.05);
+    }
+
+    // Pincode pricing details
+    let deliveryFee = 0;
+    let expectedDelivery = 'N/A';
+    if (deliveryType === 'home_delivery') {
+      const serviceDetails = checkPincodeServiceability(address.pincode, subtotal - discount);
+      if (!serviceDetails.serviceable) return null;
+      deliveryFee = serviceDetails.deliveryCharge;
+      if (normCoupon === 'FREESHIP') {
+        deliveryFee = 0;
+      }
+      expectedDelivery = getEstimatedDateString(serviceDetails.estimatedDays);
+    } else {
+      expectedDelivery = 'Ready for Store Pickup';
+    }
+
+    const gstAmount = Math.round((subtotal - discount) * 0.18); 
+    const total = subtotal - discount + deliveryFee;
+
+    const pickupOtp = deliveryType === 'store_pickup' 
+      ? Math.floor(100000 + Math.random() * 900000).toString() 
+      : undefined;
+
+    const newOrder: Order = {
+      id: `SSM-ORD-${Date.now().toString().slice(-6)}`,
+      customerEmail: currentUser?.email || 'walkin@customer.com',
+      customerName: address.fullName,
+      customerPhone: address.phone,
+      items: orderItems,
+      subtotal,
+      discount,
+      gstAmount,
+      deliveryFee,
+      total,
+      shippingAddress: address,
+      estimatedDeliveryDate: expectedDelivery,
+      status: 'pending',
+      orderDate: new Date().toISOString(),
+      
+      deliveryType,
+      isPreorder,
+      pickupDate,
+      pickupTime,
+      pickupOtp,
+      
+      paymentMethod,
+      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
+      
+      timeline: [
+        {
+          status: 'pending',
+          timestamp: new Date().toISOString(),
+          description: 'Order placed by customer.',
+          updatedBy: currentUser?.email || 'Customer'
+        }
+      ],
+      internalNotes: [],
+      callLogs: []
+    };
+
+    // Update stock levels & sales volumes
+    setDevices(prev => 
+      prev.map(d => {
+        const cartMatch = cart.find(item => item.deviceId === d.id);
+        if (cartMatch) {
+          const newStock = Math.max(0, d.stockCount - cartMatch.quantity);
+          
+          // Generate stock low warning alerts (1, 2, 5 units)
+          if (newStock === 0) {
+            addNotification('low_stock', `Product "${d.modelName}" is OUT OF STOCK (0 units remaining).`, { deviceId: d.id });
+          } else if (newStock === 1) {
+            addNotification('low_stock', `CRITICAL STOCK ALERT: "${d.modelName}" has only 1 unit remaining.`, { deviceId: d.id });
+          } else if (newStock === 2) {
+            addNotification('low_stock', `Stock Warning: "${d.modelName}" has 2 units remaining.`, { deviceId: d.id });
+          } else if (newStock <= 5) {
+            addNotification('low_stock', `Stock Warning: "${d.modelName}" has ${newStock} units remaining (below threshold 5).`, { deviceId: d.id });
+          }
+          
+          return {
+            ...d,
+            stockCount: newStock,
+            sales: d.sales + cartMatch.quantity
+          };
+        }
+        return d;
+      })
+    );
+
+    // Update accessory stock levels & sales volumes
+    setAccessories(prev =>
+      prev.map(a => {
+        const cartMatch = cart.find(item => item.deviceId === a.id);
+        if (cartMatch) {
+          const newStock = Math.max(0, a.stockCount - cartMatch.quantity);
+          if (newStock === 0) {
+            addNotification('low_stock', `Accessory "${a.name}" is OUT OF STOCK (0 units remaining).`, { deviceId: a.id });
+          } else if (newStock <= 5) {
+            addNotification('low_stock', `Accessory "${a.name}" has ${newStock} units remaining (below threshold 5).`, { deviceId: a.id });
+          }
+          return {
+            ...a,
+            stockCount: newStock,
+            sales: a.sales + cartMatch.quantity,
+            status: newStock === 0 ? 'out_of_stock' as const : a.status
+          };
+        }
+        return a;
+      })
+    );
+
+    // Update flash sales volumes if matching
+    setFlashSales(prev =>
+      prev.map(fs => {
+        const cartMatch = cart.find(item => item.deviceId === fs.deviceId);
+        if (cartMatch && fs.enabled) {
+          const newSoldCount = Math.min(fs.stockLimit, fs.soldCount + cartMatch.quantity);
+          if (newSoldCount >= fs.stockLimit) {
+            addNotification(
+              'sale_ending',
+              `Flash Sale for "${devices.find(d => d.id === fs.deviceId)?.modelName || 'device'}" has sold out!`,
+              { deviceId: fs.deviceId }
+            );
+          }
+          return {
+            ...fs,
+            soldCount: newSoldCount,
+            enabled: newSoldCount < fs.stockLimit ? fs.enabled : false
+          };
+        }
+        return fs;
+      })
+    );
+
+    // Record the Order
+    setOrders(prev => [newOrder, ...prev]);
+    clearCart();
+
+    // Trigger Admin notifications
+    addNotification(
+      'new_order',
+      `New order ${newOrder.id} placed by ${newOrder.customerName} for ₹${newOrder.total.toLocaleString('en-IN')}`,
+      { orderId: newOrder.id }
+    );
+
+    addAuditLog(`Placed Order ${newOrder.id} (${deliveryType === 'home_delivery' ? 'Home Delivery' : 'Store Pickup'})`, currentUser?.name || 'Customer');
+
+    return newOrder;
+  };
+
+  // ERP Operations
+  const updateOrderStatus = (orderId: string, status: OrderStatus, updatedBy?: string) => {
+    setOrders(prev => 
+      prev.map(o => {
+        if (o.id === orderId) {
+          const nowStr = new Date().toISOString();
+          const desc = `Order status changed to ${status.replace(/_/g, ' ')}.`;
+          const actualDeliveryDate = status === 'delivered' ? nowStr : o.actualDeliveryDate;
+          
+          return {
+            ...o,
+            status,
+            actualDeliveryDate,
+            timeline: [
+              ...o.timeline,
+              { status, timestamp: nowStr, description: desc, updatedBy: updatedBy || 'System' }
+            ]
+          };
+        }
+        return o;
+      })
+    );
+    addAuditLog(`Updated Order ${orderId} Status to ${status.toUpperCase()}`, updatedBy || 'System');
+  };
+
+  const updateOrderDelivery = (orderId: string, deliveryDetails: Partial<Order>) => {
+    setOrders(prev => 
+      prev.map(o => {
+        if (o.id === orderId) {
+          return {
+            ...o,
+            ...deliveryDetails
+          };
+        }
+        return o;
+      })
+    );
+    addAuditLog(`Updated Delivery Logistics for Order ${orderId}`, 'Admin');
+  };
+
+  const updateOrderPayment = (orderId: string, paymentDetails: Partial<Order>) => {
+    setOrders(prev => 
+      prev.map(o => {
+        if (o.id === orderId) {
+          return {
+            ...o,
+            ...paymentDetails
+          };
+        }
+        return o;
+      })
+    );
+    addAuditLog(`Updated Payment Information for Order ${orderId}`, 'Admin');
+  };
+
+  const addOrderNote = (orderId: string, note: string) => {
+    setOrders(prev => 
+      prev.map(o => {
+        if (o.id === orderId) {
+          return {
+            ...o,
+            internalNotes: [...(o.internalNotes || []), note]
+          };
+        }
+        return o;
+      })
+    );
+    addAuditLog(`Added internal note to Order ${orderId}`, 'Admin');
+  };
+
+  const issueRefund = (orderId: string, refundDetails: { amount: number; method: string; reason?: string }) => {
+    setOrders(prev => 
+      prev.map(o => {
+        if (o.id === orderId) {
+          const nowStr = new Date().toISOString();
+          const refundId = `SSM-REF-${Date.now().toString().slice(-6)}`;
+          return {
+            ...o,
+            status: 'refunded' as const,
+            paymentStatus: 'refunded' as const,
+            refundId,
+            refundAmount: refundDetails.amount,
+            refundMethod: refundDetails.method,
+            refundDate: nowStr,
+            returnReason: refundDetails.reason || 'Requested by Customer',
+            timeline: [
+              ...o.timeline,
+              { status: 'refunded', timestamp: nowStr, description: `Refund Issued: ₹${refundDetails.amount} via ${refundDetails.method}. Ref ID: ${refundId}`, updatedBy: 'Super Admin' }
+            ]
+          };
+        }
+        return o;
+      })
+    );
+    addAuditLog(`Issued Refund of ₹${refundDetails.amount} for Order ${orderId}`, 'Super Admin');
+  };
+
+  const addCallLog = (orderId: string, call: { duration: string; staffName: string; summary: string }) => {
+    setOrders(prev => 
+      prev.map(o => {
+        if (o.id === orderId) {
+          const callEntry = {
+            id: `call-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            ...call
+          };
+          return {
+            ...o,
+            callLogs: [...(o.callLogs || []), callEntry]
+          };
+        }
+        return o;
+      })
+    );
+    addAuditLog(`Registered customer call log for Order ${orderId}`, call.staffName);
+  };
+  
+  const addAuditLog = (action: string, adminName: string) => {
+    const log: AuditLog = {
+      id: `audit-${Date.now()}`,
+      adminName,
+      action,
+      date: new Date().toLocaleDateString('en-IN'),
+      time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      ipAddress: `192.168.1.${Math.floor(2 + Math.random() * 254)}`
+    };
+    setAuditLogs(prev => [log, ...prev]);
+  };
+  
+  const clearAuditLogs = () => setAuditLogs([]);
+
+  const trackWhatsAppClick = (category: 'product' | 'cart' | 'order' | 'general', deviceId?: string) => {
+    setWhatsAppAnalytics(prev => {
+      const updatedProducts = { ...prev.mostContactedProducts };
+      if (deviceId) {
+        updatedProducts[deviceId] = (updatedProducts[deviceId] || 0) + 1;
+      }
+      
+      return {
+        totalClicks: prev.totalClicks + 1,
+        productClicks: category === 'product' ? prev.productClicks + 1 : prev.productClicks,
+        cartClicks: category === 'cart' ? prev.cartClicks + 1 : prev.cartClicks,
+        orderClicks: category === 'order' ? prev.orderClicks + 1 : prev.orderClicks,
+        mostContactedProducts: updatedProducts
+      };
+    });
+    addAuditLog(`WhatsApp ${category.toUpperCase()} Inquiry Support Clicked`, currentUser?.name || 'Customer');
+  };
+
+  const clearWhatsAppAnalytics = () => {
+    setWhatsAppAnalytics({
+      totalClicks: 0,
+      productClicks: 0,
+      cartClicks: 0,
+      orderClicks: 0,
+      mostContactedProducts: {}
+    });
+  };
+
+  // Instagram Post Management
+  const addInstagramPost = (post: Omit<InstagramPost, 'id' | 'createdAt' | 'views' | 'clicks'>) => {
+    const newPost: InstagramPost = {
+      ...post,
+      id: `ig-${Date.now()}`,
+      views: 0,
+      clicks: 0,
+      createdAt: new Date().toISOString()
+    };
+    setInstagramPosts(prev => [...prev, newPost]);
+    addAuditLog(`Added Instagram Post Feed: ${post.url}`, currentUser?.name || 'Admin');
+  };
+
+  const updateInstagramPost = (id: string, updates: Partial<InstagramPost>) => {
+    setInstagramPosts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    addAuditLog(`Updated Instagram Post Entry ID: ${id}`, currentUser?.name || 'Admin');
+  };
+
+  const deleteInstagramPost = (id: string) => {
+    setInstagramPosts(prev => prev.filter(p => p.id !== id));
+    addAuditLog(`Deleted Instagram Post Entry ID: ${id}`, currentUser?.name || 'Admin');
+  };
+
+  const reorderInstagramPosts = (posts: InstagramPost[]) => {
+    setInstagramPosts(posts);
+    addAuditLog(`Reordered Instagram Posts Display Sequence`, currentUser?.name || 'Admin');
+  };
+
+  const updateInstagramSettings = (settings: Partial<InstagramSettings>) => {
+    setInstagramSettings(prev => ({ ...prev, ...settings }));
+    addAuditLog(`Updated Instagram Storefront Section Settings`, currentUser?.name || 'Admin');
+  };
+
+  const trackInstagramPostView = (id: string) => {
+    setInstagramPosts(prev => prev.map(p => p.id === id ? { ...p, views: p.views + 1 } : p));
+  };
+
+  const trackInstagramPostClick = (id: string) => {
+    setInstagramPosts(prev => prev.map(p => p.id === id ? { ...p, clicks: p.clicks + 1 } : p));
+  };
+
+
+  // Super Admin: Manage Admin Accounts
+  const addAdminEmail = (email: string, name: string): boolean => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (admins.some(a => a.email.toLowerCase() === cleanEmail)) {
+      return false; // Duplicate check
+    }
+
+    const newAdmin: AdminUser = {
+      email: cleanEmail,
+      name,
+      role: 'manager',
+      enabled: true,
+      dateAdded: new Date().toISOString()
+    };
+
+    setAdmins(prev => [...prev, newAdmin]);
+    return true;
+  };
+
+  const removeAdminEmail = (email: string) => {
+    if (email === 'superadmin@srisaimobiles.com') return; // Cannot delete Super Admin!
+    setAdmins(prev => prev.filter(a => a.email.toLowerCase() !== email.toLowerCase()));
+  };
+
+  const toggleAdminState = (email: string) => {
+    if (email === 'superadmin@srisaimobiles.com') return;
+    setAdmins(prev => 
+      prev.map(a => a.email.toLowerCase() === email.toLowerCase() ? { ...a, enabled: !a.enabled } : a)
+    );
+  };
+
+  // Admin Device Management
+  const saveDevice = (deviceData: Omit<Device, 'id' | 'views' | 'sales'> & { id?: string }) => {
+    if (deviceData.id) {
+      // Edit
+      setDevices(prev => 
+        prev.map(d => d.id === deviceData.id 
+          ? { 
+              ...d, 
+              ...deviceData,
+              status: deviceData.stockCount > 0 ? (d.status === 'archived' ? 'archived' : 'available') : 'out_of_stock'
+            } as Device 
+          : d
+        )
+      );
+      addAuditLog(`Edited Smartphone Catalog Entry: ${deviceData.brand} ${deviceData.modelName}`, currentUser?.name || 'Admin');
+    } else {
+      // Add
+      const id = `${deviceData.brand.toLowerCase()}-${deviceData.modelName.toLowerCase().replace(/\s+/g, '-')}-${Date.now().toString().slice(-4)}`;
+      const newDevice: Device = {
+        ...deviceData,
+        id,
+        views: 0,
+        sales: 0,
+        status: deviceData.stockCount > 0 ? 'available' : 'out_of_stock'
+      };
+      setDevices(prev => [...prev, newDevice]);
+      addAuditLog(`Added New Smartphone Catalog Entry: ${deviceData.brand} ${deviceData.modelName}`, currentUser?.name || 'Admin');
+    }
+  };
+
+  const duplicateDevice = (id: string) => {
+    const source = devices.find(d => d.id === id);
+    if (!source) return;
+
+    const dup: Device = {
+      ...source,
+      id: `${source.id}-copy-${Date.now().toString().slice(-3)}`,
+      modelName: `${source.modelName} (Copy)`,
+      views: 0,
+      sales: 0
+    };
+
+    setDevices(prev => [...prev, dup]);
+    addAuditLog(`Duplicated Smartphone Entry: ID ${id}`, currentUser?.name || 'Admin');
+  };
+
+  const deleteDevice = (id: string) => {
+    setDevices(prev => prev.filter(d => d.id !== id));
+    // Remove from flash sale and cart
+    setFlashSales(prev => prev.filter(fs => fs.deviceId !== id));
+    setCart(prev => prev.filter(item => item.deviceId !== id));
+    addAuditLog(`Deleted Smartphone Entry: ID ${id}`, currentUser?.name || 'Admin');
+  };
+
+  const archiveDevice = (id: string) => {
+    setDevices(prev => 
+      prev.map(d => d.id === id ? { ...d, status: 'archived' as const } : d)
+    );
+    addAuditLog(`Archived Smartphone Entry: ID ${id}`, currentUser?.name || 'Admin');
+  };
+
+  // Admin Banner Management
+  const saveBanner = (bannerData: Omit<Banner, 'id'> & { id?: string }) => {
+    if (bannerData.id) {
+      setBanners(prev => prev.map(b => b.id === bannerData.id ? { ...b, ...bannerData } as Banner : b));
+      addAuditLog(`Edited Banner Entry: ${bannerData.title}`, currentUser?.name || 'Admin');
+    } else {
+      const id = `banner-${Date.now()}`;
+      const newBanner: Banner = {
+        ...bannerData,
+        id,
+        order: banners.length + 1
+      };
+      setBanners(prev => [...prev, newBanner]);
+      addAuditLog(`Added New Banner Entry: ${bannerData.title}`, currentUser?.name || 'Admin');
+    }
+  };
+
+  const deleteBanner = (id: string) => {
+    setBanners(prev => prev.filter(b => b.id !== id).map((b, idx) => ({ ...b, order: idx + 1 })));
+    addAuditLog(`Deleted Banner ID: ${id}`, currentUser?.name || 'Admin');
+  };
+
+  const reorderBanners = (list: Banner[]) => {
+    setBanners(list.map((b, idx) => ({ ...b, order: idx + 1 })));
+    addAuditLog(`Reordered Banners Display Sequence`, currentUser?.name || 'Admin');
+  };
+
+  // Admin Flash Sale Management
+  const saveFlashSale = (saleData: Omit<FlashSale, 'id' | 'soldCount'> & { id?: string }) => {
+    if (saleData.id) {
+      setFlashSales(prev => prev.map(fs => fs.id === saleData.id ? { ...fs, ...saleData } as FlashSale : fs));
+      addAuditLog(`Edited Flash Sale ID: ${saleData.id}`, currentUser?.name || 'Admin');
+    } else {
+      const id = `fs-${Date.now()}`;
+      const newSale: FlashSale = {
+        ...saleData,
+        id,
+        soldCount: 0
+      };
+      setFlashSales(prev => [...prev, newSale]);
+      addAuditLog(`Added New Flash Sale Entry`, currentUser?.name || 'Admin');
+    }
+  };
+
+  const deleteFlashSale = (id: string) => {
+    setFlashSales(prev => prev.filter(fs => fs.id !== id));
+    addAuditLog(`Deleted Flash Sale Entry ID: ${id}`, currentUser?.name || 'Admin');
+  };
+
+  // Admin Accessories Management
+  const saveAccessory = (accessoryData: Omit<Accessory, 'id' | 'views' | 'sales' | 'createdAt'> & { id?: string }) => {
+    if (accessoryData.id) {
+      setAccessories(prev => 
+        prev.map(a => a.id === accessoryData.id 
+          ? { 
+              ...a, 
+              ...accessoryData,
+              status: accessoryData.stockCount > 0 ? (a.status === 'archived' ? 'archived' : 'available') : 'out_of_stock'
+            } as Accessory 
+          : a
+        )
+      );
+      addAuditLog(`Edited Accessory Entry: ${accessoryData.name}`, currentUser?.name || 'Admin');
+    } else {
+      const id = `acc-${accessoryData.category.slice(0,3)}-${Date.now().toString().slice(-4)}`;
+      const newAccessory: Accessory = {
+        ...accessoryData,
+        id,
+        views: 0,
+        sales: 0,
+        status: accessoryData.stockCount > 0 ? 'available' : 'out_of_stock',
+        createdAt: new Date().toISOString()
+      };
+      setAccessories(prev => [...prev, newAccessory]);
+      addAuditLog(`Added New Accessory: ${accessoryData.name}`, currentUser?.name || 'Admin');
+    }
+  };
+
+  const deleteAccessory = (id: string) => {
+    setAccessories(prev => prev.filter(a => a.id !== id));
+    setCart(prev => prev.filter(item => item.deviceId !== id));
+    addAuditLog(`Deleted Accessory Entry ID: ${id}`, currentUser?.name || 'Admin');
+  };
+
+  const incrementAccessoryViews = (id: string) => {
+    setAccessories(prev => 
+      prev.map(a => a.id === id ? { ...a, views: a.views + 1 } : a)
+    );
+  };
+
+  const incrementAccessorySales = (id: string, quantity: number) => {
+    setAccessories(prev => 
+      prev.map(a => a.id === id ? { ...a, sales: a.sales + quantity } : a)
+    );
+  };
+
+  // Notification Operations
+  const addNotification = (
+    type: SystemNotification['type'], 
+    message: string, 
+    meta?: SystemNotification['meta']
+  ) => {
+    const notif: SystemNotification = {
+      id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      type,
+      message,
+      timestamp: new Date().toISOString(),
+      read: false,
+      meta
+    };
+    setNotifications(prev => [notif, ...prev]);
+  };
+
+  const markNotificationRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const markAllNotificationsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  return (
+    <AppContext.Provider value={{
+      theme, toggleTheme,
+      currentUser, setCurrentUser,
+      devices, banners, flashSales, admins,
+      addresses, selectedAddress, setSelectedAddress,
+      cart, wishlist, comparisonList, orders, notifications,
+      searchHistory, recentlyViewed, currentRoute, navigateTo,
+      addToCart, updateCartQty, removeFromCart, clearCart,
+      toggleWishlist, addToCompare, removeFromCompare,
+      addAddress, removeAddress, addSearchQuery, clearSearchHistory,
+      addRecentlyViewed, createOrder,
+      
+      // OMS & ERP operations
+      updateOrderStatus, updateOrderDelivery, updateOrderPayment,
+      addOrderNote, issueRefund, addCallLog,
+      auditLogs, addAuditLog, clearAuditLogs,
+      adminRole, setAdminRole,
+
+      // WhatsApp Settings & Analytics
+      whatsAppSettings, setWhatsAppSettings, whatsAppAnalytics,
+      trackWhatsAppClick, clearWhatsAppAnalytics,
+
+      // Instagram Posts
+      instagramPosts, addInstagramPost, updateInstagramPost,
+      deleteInstagramPost, reorderInstagramPosts, instagramSettings,
+      updateInstagramSettings, trackInstagramPostView, trackInstagramPostClick,
+
+      // Accessories
+      accessories, saveAccessory, deleteAccessory,
+      incrementAccessoryViews, incrementAccessorySales,
+
+      addAdminEmail, removeAdminEmail, toggleAdminState,
+      saveDevice, duplicateDevice, deleteDevice, archiveDevice,
+      saveBanner, deleteBanner, reorderBanners,
+      saveFlashSale, deleteFlashSale,
+      addNotification, markNotificationRead, markAllNotificationsRead,
+      incrementDeviceViews
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) throw new Error('useApp must be used inside AppProvider');
+  return context;
+};
