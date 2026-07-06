@@ -176,6 +176,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
+  // Resolved database UUID for the current user (looked up by email)
+  const [userDbId, setUserDbId] = useState<string | null>(null);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [comparisonList, setComparisonList] = useState<string[]>(() => {
     const saved = sessionStorage.getItem('srisai_compare');
@@ -532,26 +534,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // 3. User Profile Loading (when logged in)
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!currentUser) return;
+      if (!currentUser) {
+        setUserDbId(null);
+        setCart([]);
+        setWishlist([]);
+        setAddresses([]);
+        return;
+      }
       try {
+        // Resolve user UUID from email
         const { data: userRecord, error } = await supabase
           .from('users')
-          .select('*')
+          .select('id')
           .eq('email', currentUser.email.toLowerCase())
           .single();
 
         if (error && error.code !== 'PGRST116') throw error;
 
-        if (userRecord) {
-          if (Array.isArray(userRecord.cart) && userRecord.cart.length > 0) {
-            setCart(userRecord.cart);
-          }
-          if (Array.isArray(userRecord.wishlist)) {
-            setWishlist(userRecord.wishlist);
-          }
-          if (Array.isArray(userRecord.addresses)) {
-            setAddresses(userRecord.addresses);
-          }
+        if (!userRecord) {
+          // User not in DB yet — insert them
+          const { data: inserted } = await supabase
+            .from('users')
+            .insert({ email: currentUser.email.toLowerCase(), role: currentUser.role, name: currentUser.name || '' })
+            .select('id')
+            .single();
+          if (inserted) setUserDbId(inserted.id);
+          return;
+        }
+
+        const uid = userRecord.id;
+        setUserDbId(uid);
+
+        // Load cart from cart_items table
+        const { data: cartRows } = await supabase
+          .from('cart_items')
+          .select('item_id, quantity, selected_color')
+          .eq('user_id', uid);
+        if (cartRows && cartRows.length > 0) {
+          setCart(cartRows.map((r: any) => ({ deviceId: r.item_id, quantity: r.quantity, selectedColor: r.selected_color })));
+        } else {
+          setCart([]);
+        }
+
+        // Load wishlist from wishlist table
+        const { data: wishRows } = await supabase
+          .from('wishlist')
+          .select('item_id')
+          .eq('user_id', uid);
+        if (wishRows && wishRows.length > 0) {
+          setWishlist(wishRows.map((r: any) => r.item_id));
+        } else {
+          setWishlist([]);
+        }
+
+        // Load addresses from addresses table
+        const { data: addrRows } = await supabase
+          .from('addresses')
+          .select('*')
+          .eq('user_id', uid);
+        if (addrRows && addrRows.length > 0) {
+          setAddresses(addrRows.map((r: any) => ({
+            id: r.id,
+            fullName: r.full_name,
+            phone: r.phone,
+            houseNumber: r.house_number || '',
+            apartmentName: r.apartment_name || '',
+            streetName: r.street_name || '',
+            landmark: r.landmark || '',
+            areaColony: r.area_colony || '',
+            city: r.city,
+            state: r.state,
+            pincode: r.pincode,
+            isDefault: r.is_default,
+          })));
+        } else {
+          setAddresses([]);
         }
       } catch (err) {
         console.error('Failed to load user profile from Supabase:', err);
@@ -561,25 +618,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchUserProfile();
   }, [currentUser]);
 
-  // 4. User Profile Sync (when states are modified)
-  useEffect(() => {
-    if (!currentUser) return;
-    const syncProfile = async () => {
-      try {
-        await supabase
-          .from('users')
-          .update({
-            cart,
-            wishlist,
-            addresses
-          })
-          .eq('email', currentUser.email.toLowerCase());
-      } catch (err) {
-        console.error('Sync profile to Supabase failed:', err);
-      }
-    };
-    syncProfile();
-  }, [cart, wishlist, addresses, currentUser]);
+  // 4. User Profile Sync — now handled per-mutation below (no bulk JSON sync needed)
 
   // 5. Transient UI and configurations sync to sessionStorage
   useEffect(() => {
@@ -649,16 +688,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTheme(t => t === 'light' ? 'dark' : 'light');
   };
 
-  // Cart operations
+  // Cart operations (write to Supabase cart_items table)
   const addToCart = (deviceId: string, color: string) => {
     setCart(prevCart => {
       const existing = prevCart.find(item => item.deviceId === deviceId && item.selectedColor === color);
       if (existing) {
+        const newQty = existing.quantity + 1;
+        // Supabase: update quantity
+        if (userDbId) {
+          supabase.from('cart_items').update({ quantity: newQty })
+            .eq('user_id', userDbId).eq('item_id', deviceId).eq('selected_color', color)
+            .then();
+        }
         return prevCart.map(item => 
           (item.deviceId === deviceId && item.selectedColor === color)
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: newQty }
             : item
         );
+      }
+      // Supabase: insert new cart item
+      if (userDbId) {
+        supabase.from('cart_items').insert({
+          user_id: userDbId, item_id: deviceId, quantity: 1, selected_color: color
+        }).then();
       }
       return [...prevCart, { deviceId, selectedColor: color, quantity: 1 }];
     });
@@ -676,19 +728,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : item
       )
     );
+    // Supabase: update quantity
+    if (userDbId) {
+      supabase.from('cart_items').update({ quantity: qty })
+        .eq('user_id', userDbId).eq('item_id', deviceId).eq('selected_color', color)
+        .then();
+    }
   };
 
   const removeFromCart = (deviceId: string, color: string) => {
     setCart(prevCart => prevCart.filter(item => !(item.deviceId === deviceId && item.selectedColor === color)));
+    // Supabase: delete cart item
+    if (userDbId) {
+      supabase.from('cart_items').delete()
+        .eq('user_id', userDbId).eq('item_id', deviceId).eq('selected_color', color)
+        .then();
+    }
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    // Supabase: delete all cart items for user
+    if (userDbId) {
+      supabase.from('cart_items').delete().eq('user_id', userDbId).then();
+    }
+  };
 
-  // Wishlist operations
+  // Wishlist operations (write to Supabase wishlist table)
   const toggleWishlist = (deviceId: string) => {
-    setWishlist(prev => 
-      prev.includes(deviceId) ? prev.filter(id => id !== deviceId) : [...prev, deviceId]
-    );
+    setWishlist(prev => {
+      const isInList = prev.includes(deviceId);
+      if (isInList) {
+        // Supabase: delete from wishlist
+        if (userDbId) {
+          supabase.from('wishlist').delete()
+            .eq('user_id', userDbId).eq('item_id', deviceId)
+            .then();
+        }
+        return prev.filter(id => id !== deviceId);
+      } else {
+        // Supabase: insert into wishlist
+        if (userDbId) {
+          supabase.from('wishlist').insert({
+            user_id: userDbId, item_id: deviceId
+          }).then();
+        }
+        return [...prev, deviceId];
+      }
+    });
   };
 
   // Comparison operations (max 4 devices)
@@ -703,15 +790,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setComparisonList(prev => prev.filter(id => id !== deviceId));
   };
 
-  // Address operations
+  // Address operations (write to Supabase addresses table)
   const addAddress = (addr: Omit<Address, 'id'>) => {
-    const id = `addr-${Date.now()}`;
-    const newAddr: Address = { ...addr, id };
+    const localId = `addr-${Date.now()}`;
+    const newAddr: Address = { ...addr, id: localId };
     
     setAddresses(prev => {
       let updated = prev;
       if (newAddr.isDefault) {
         updated = prev.map(a => ({ ...a, isDefault: false }));
+        // Supabase: unset all defaults
+        if (userDbId) {
+          supabase.from('addresses').update({ is_default: false }).eq('user_id', userDbId).then();
+        }
       }
       const list = [...updated, newAddr];
       if (list.length === 1) {
@@ -723,10 +814,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (newAddr.isDefault || addresses.length === 0) {
       setSelectedAddress(newAddr);
     }
+
+    // Supabase: insert address row
+    if (userDbId) {
+      supabase.from('addresses').insert({
+        user_id: userDbId,
+        full_name: addr.fullName,
+        phone: addr.phone,
+        house_number: addr.houseNumber || '',
+        apartment_name: addr.apartmentName || '',
+        street_name: addr.streetName || '',
+        landmark: addr.landmark || '',
+        area_colony: addr.areaColony || '',
+        city: addr.city,
+        state: addr.state,
+        pincode: addr.pincode,
+        is_default: addr.isDefault || addresses.length === 0,
+      }).select('id').single().then(({ data }) => {
+        // Update local address with the real UUID from DB
+        if (data) {
+          setAddresses(prev => prev.map(a => a.id === localId ? { ...a, id: data.id } : a));
+          if (newAddr.isDefault || addresses.length === 0) {
+            setSelectedAddress(prev => prev && prev.id === localId ? { ...prev, id: data.id } : prev);
+          }
+        }
+      });
+    }
   };
 
   const removeAddress = (id: string) => {
     setAddresses(prev => prev.filter(a => a.id !== id));
+    // Supabase: delete address row
+    if (userDbId) {
+      supabase.from('addresses').delete().eq('id', id).then();
+    }
   };
 
   // Search History

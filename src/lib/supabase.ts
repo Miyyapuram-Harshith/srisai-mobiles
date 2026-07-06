@@ -330,7 +330,7 @@ export const mapAccessoryToDbAccessory = (acc: Partial<Accessory>): any => ({
 // ==========================================
 export const mapDbFlashSaleToFlashSale = (db: any): FlashSale => ({
   id: db.id,
-  deviceId: db.device_id,
+  deviceId: db.product_id,
   discountPercentage: Number(db.discount_percentage || 0),
   stockLimit: Number(db.stock_limit || 0),
   soldCount: Number(db.sold_count || 0),
@@ -341,7 +341,7 @@ export const mapDbFlashSaleToFlashSale = (db: any): FlashSale => ({
 
 export const mapFlashSaleToDbFlashSale = (fs: Partial<FlashSale>): any => ({
   id: fs.id,
-  device_id: fs.deviceId,
+  product_id: fs.deviceId,
   discount_percentage: fs.discountPercentage,
   stock_limit: fs.stockLimit,
   sold_count: fs.soldCount,
