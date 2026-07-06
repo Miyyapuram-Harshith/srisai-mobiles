@@ -7,8 +7,18 @@ import {
 } from '../types';
 import { INITIAL_DEVICES, INITIAL_BANNERS, INITIAL_FLASH_SALES, INITIAL_ADMINS, INITIAL_ORDERS, INITIAL_ACCESSORIES } from '../utils/seedData';
 import { checkPincodeServiceability, getEstimatedDateString } from '../utils/pincodeService';
+import { 
+  supabase, 
+  mapDbProductToDevice, 
+  mapDeviceToDbProduct, 
+  mapDbBannerToBanner, 
+  mapBannerToDbBanner, 
+  mapDbOrderToOrder, 
+  mapOrderToDbOrder 
+} from '../lib/supabase';
 
 interface AppContextType {
+  dbLoading: boolean;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   currentUser: UserSession | null;
@@ -123,9 +133,12 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Database loading state
+  const [dbLoading, setDbLoading] = useState(true);
+
   // Theme state
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('srisai_theme');
+    const saved = sessionStorage.getItem('srisai_theme');
     return (saved === 'light' || saved === 'dark') ? saved : 'dark';
   });
 
@@ -137,76 +150,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Core databases
   const [currentUser, setCurrentUserState] = useState<UserSession | null>(() => {
-    const saved = localStorage.getItem('srisai_session');
+    const saved = sessionStorage.getItem('srisai_session');
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [devices, setDevices] = useState<Device[]>(() => {
-    const saved = localStorage.getItem('srisai_devices');
-    return saved ? JSON.parse(saved) : INITIAL_DEVICES;
-  });
-
-  const [banners, setBanners] = useState<Banner[]>(() => {
-    const saved = localStorage.getItem('srisai_banners');
-    return saved ? JSON.parse(saved) : INITIAL_BANNERS;
-  });
-
-  const [flashSales, setFlashSales] = useState<FlashSale[]>(() => {
-    const saved = localStorage.getItem('srisai_flash_sales');
-    return saved ? JSON.parse(saved) : INITIAL_FLASH_SALES;
-  });
-
-  const [admins, setAdmins] = useState<AdminUser[]>(() => {
-    const saved = localStorage.getItem('srisai_admins');
-    return saved ? JSON.parse(saved) : INITIAL_ADMINS;
-  });
-
-  const [addresses, setAddresses] = useState<Address[]>(() => {
-    const saved = localStorage.getItem('srisai_addresses');
-    if (saved) return JSON.parse(saved);
-    // Seed default addresses
-    return [
-      {
-        id: 'addr-default-1',
-        fullName: 'Sri Sai Mobiles HQ',
-        phone: '8688303048',
-        pincode: '505327',
-        addressLine: 'Opposite Big C, Angadi Bazar',
-        city: 'Jagitial',
-        state: 'Telangana',
-        isDefault: true
-      }
-    ];
-  });
-
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(() => {
-    const saved = localStorage.getItem('srisai_selected_address');
-    if (saved) return JSON.parse(saved);
-    return addresses.find(a => a.isDefault) || null;
-  });
-
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('srisai_cart');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [wishlist, setWishlist] = useState<string[]>(() => {
-    const saved = localStorage.getItem('srisai_wishlist');
-    return saved ? JSON.parse(saved) : [];
-  });
-
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [flashSales, setFlashSales] = useState<FlashSale[]>(INITIAL_FLASH_SALES);
+  const [admins, setAdmins] = useState<AdminUser[]>(INITIAL_ADMINS);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>([]);
   const [comparisonList, setComparisonList] = useState<string[]>(() => {
-    const saved = localStorage.getItem('srisai_compare');
+    const saved = sessionStorage.getItem('srisai_compare');
     return saved ? JSON.parse(saved) : [];
   });
-
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('srisai_orders');
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
-  });
-
+  const [orders, setOrders] = useState<Order[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
-    const saved = localStorage.getItem('srisai_audit_logs');
+    const saved = sessionStorage.getItem('srisai_audit_logs');
     if (saved) return JSON.parse(saved);
     return [
       {
@@ -221,20 +183,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [adminRole, setAdminRole] = useState<PermissionRole>(() => {
-    const saved = localStorage.getItem('srisai_admin_role');
+    const saved = sessionStorage.getItem('srisai_admin_role');
     return (saved as PermissionRole) || 'super_admin';
   });
 
   const [whatsAppSettings, setWhatsAppSettings] = useState<WhatsAppSettings>(() => {
-    const saved = localStorage.getItem('srisai_whatsapp_settings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.salesNumber === '9876543210' || parsed.salesNumber === '9876543213') {
-        localStorage.removeItem('srisai_whatsapp_settings');
-      } else {
-        return parsed;
-      }
-    }
+    const saved = sessionStorage.getItem('srisai_whatsapp_settings');
+    if (saved) return JSON.parse(saved);
     return {
       enabled: true,
       countryCode: '91',
@@ -257,7 +212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [whatsAppAnalytics, setWhatsAppAnalytics] = useState<WhatsAppAnalytics>(() => {
-    const saved = localStorage.getItem('srisai_whatsapp_analytics');
+    const saved = sessionStorage.getItem('srisai_whatsapp_analytics');
     if (saved) return JSON.parse(saved);
     return {
       totalClicks: 0,
@@ -269,9 +224,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [notifications, setNotifications] = useState<SystemNotification[]>(() => {
-    const saved = localStorage.getItem('srisai_notifications');
+    const saved = sessionStorage.getItem('srisai_notifications');
     if (saved) return JSON.parse(saved);
-    // Seed standard mock notification
     return [
       {
         id: 'notif-1',
@@ -285,27 +239,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
-    const saved = localStorage.getItem('srisai_search_history');
+    const saved = sessionStorage.getItem('srisai_search_history');
     return saved ? JSON.parse(saved) : ['iPhone', 'Galaxy Ultra', 'OnePlus 12'];
   });
 
   const [recentlyViewed, setRecentlyViewed] = useState<string[]>(() => {
-    const saved = localStorage.getItem('srisai_recently_viewed');
+    const saved = sessionStorage.getItem('srisai_recently_viewed');
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [instagramPosts, setInstagramPosts] = useState<InstagramPost[]>(() => {
-    const saved = localStorage.getItem('srisai_instagram_posts');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [accessories, setAccessories] = useState<Accessory[]>(() => {
-    const saved = localStorage.getItem('srisai_accessories');
-    return saved ? JSON.parse(saved) : INITIAL_ACCESSORIES;
-  });
+  const [instagramPosts, setInstagramPosts] = useState<InstagramPost[]>([]);
+  const [accessories, setAccessories] = useState<Accessory[]>(INITIAL_ACCESSORIES);
 
   const [instagramSettings, setInstagramSettings] = useState<InstagramSettings>(() => {
-    const saved = localStorage.getItem('srisai_instagram_settings');
+    const saved = sessionStorage.getItem('srisai_instagram_settings');
     return saved ? JSON.parse(saved) : {
       showSection: true,
       sectionTitle: '📸 Latest From Instagram',
@@ -320,7 +267,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       followersCount: '40K+'
     };
   });
-
 
   // Listen to hash router changes
   useEffect(() => {
@@ -338,106 +284,240 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo(0, 0);
   };
 
-  // Sync state to local storage
+  // 1. Seed & Load DB on mount
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setDbLoading(true);
+
+        // Fetch products
+        let { data: productsData, error: pError } = await supabase.from('products').select('*');
+        if (pError) throw pError;
+        
+        if (!productsData || productsData.length === 0) {
+          const seeds = INITIAL_DEVICES.map(mapDeviceToDbProduct);
+          await supabase.from('products').insert(seeds);
+          const { data: refetched } = await supabase.from('products').select('*');
+          productsData = refetched || [];
+        }
+        setDevices(productsData.map(mapDbProductToDevice));
+
+        // Fetch banners
+        let { data: bannersData, error: bError } = await supabase.from('banners').select('*');
+        if (bError) throw bError;
+
+        if (!bannersData || bannersData.length === 0) {
+          const seeds = INITIAL_BANNERS.map(mapBannerToDbBanner);
+          await supabase.from('banners').insert(seeds);
+          const { data: refetched } = await supabase.from('banners').select('*');
+          bannersData = refetched || [];
+        }
+        setBanners(bannersData.map(mapDbBannerToBanner).sort((a, b) => a.order - b.order));
+
+        // Fetch orders
+        let { data: ordersData, error: oError } = await supabase.from('orders').select('*');
+        if (oError) throw oError;
+
+        if (!ordersData || ordersData.length === 0) {
+          const seeds = INITIAL_ORDERS.map(mapOrderToDbOrder);
+          await supabase.from('orders').insert(seeds);
+          const { data: refetched } = await supabase.from('orders').select('*');
+          ordersData = refetched || [];
+        }
+        setOrders(ordersData.map(mapDbOrderToOrder).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()));
+
+        // Ensure users are seeded
+        const { data: usersData } = await supabase.from('users').select('*');
+        if (!usersData || usersData.length === 0) {
+          const adminUsers = INITIAL_ADMINS.map(adm => ({
+            email: adm.email.toLowerCase(),
+            role: adm.role
+          }));
+          await supabase.from('users').insert(adminUsers);
+        }
+
+      } catch (err) {
+        console.error('Error seeding/fetching database:', err);
+      } finally {
+        setDbLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
+
+  // 2. Realtime Listeners
+  useEffect(() => {
+    const productsChannel = supabase
+      .channel('products-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newDevice = mapDbProductToDevice(payload.new);
+          setDevices(prev => {
+            if (prev.some(d => d.id === newDevice.id)) return prev;
+            return [...prev, newDevice];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedDevice = mapDbProductToDevice(payload.new);
+          setDevices(prev => prev.map(d => d.id === updatedDevice.id ? updatedDevice : d));
+        } else if (payload.eventType === 'DELETE') {
+          setDevices(prev => prev.filter(d => d.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    const bannersChannel = supabase
+      .channel('banners-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'banners' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newBanner = mapDbBannerToBanner(payload.new);
+          setBanners(prev => {
+            if (prev.some(b => b.id === newBanner.id)) return prev;
+            return [...prev, newBanner].sort((a, b) => a.order - b.order);
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedBanner = mapDbBannerToBanner(payload.new);
+          setBanners(prev => prev.map(b => b.id === updatedBanner.id ? updatedBanner : b).sort((a, b) => a.order - b.order));
+        } else if (payload.eventType === 'DELETE') {
+          setBanners(prev => prev.filter(b => b.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    const ordersChannel = supabase
+      .channel('orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newOrder = mapDbOrderToOrder(payload.new);
+          setOrders(prev => {
+            if (prev.some(o => o.id === newOrder.id)) return prev;
+            return [newOrder, ...prev];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedOrder = mapDbOrderToOrder(payload.new);
+          setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+        } else if (payload.eventType === 'DELETE') {
+          setOrders(prev => prev.filter(o => o.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(productsChannel);
+      supabase.removeChannel(bannersChannel);
+      supabase.removeChannel(ordersChannel);
+    };
+  }, []);
+
+  // 3. User Profile Loading (when logged in)
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!currentUser) return;
+      try {
+        const { data: userRecord, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', currentUser.email.toLowerCase())
+          .single();
+
+        if (error && error.code !== 'PGRST116') throw error;
+
+        if (userRecord) {
+          if (Array.isArray(userRecord.cart) && userRecord.cart.length > 0) {
+            setCart(userRecord.cart);
+          }
+          if (Array.isArray(userRecord.wishlist)) {
+            setWishlist(userRecord.wishlist);
+          }
+          if (Array.isArray(userRecord.addresses)) {
+            setAddresses(userRecord.addresses);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load user profile from Supabase:', err);
+      }
+    };
+
+    fetchUserProfile();
+  }, [currentUser]);
+
+  // 4. User Profile Sync (when states are modified)
+  useEffect(() => {
+    if (!currentUser) return;
+    const syncProfile = async () => {
+      try {
+        await supabase
+          .from('users')
+          .update({
+            cart,
+            wishlist,
+            addresses
+          })
+          .eq('email', currentUser.email.toLowerCase());
+      } catch (err) {
+        console.error('Sync profile to Supabase failed:', err);
+      }
+    };
+    syncProfile();
+  }, [cart, wishlist, addresses, currentUser]);
+
+  // 5. Transient UI and configurations sync to sessionStorage
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('srisai_theme', theme);
+    sessionStorage.setItem('srisai_theme', theme);
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem('srisai_devices', JSON.stringify(devices));
-  }, [devices]);
-
-  useEffect(() => {
-    localStorage.setItem('srisai_banners', JSON.stringify(banners));
-  }, [banners]);
-
-  useEffect(() => {
-    localStorage.setItem('srisai_flash_sales', JSON.stringify(flashSales));
-  }, [flashSales]);
-
-  useEffect(() => {
-    localStorage.setItem('srisai_admins', JSON.stringify(admins));
-  }, [admins]);
-
-  useEffect(() => {
-    localStorage.setItem('srisai_addresses', JSON.stringify(addresses));
-    if (selectedAddress && !addresses.find(a => a.id === selectedAddress.id)) {
-      setSelectedAddress(addresses.find(a => a.isDefault) || null);
-    }
-  }, [addresses]);
-
-  useEffect(() => {
     if (selectedAddress) {
-      localStorage.setItem('srisai_selected_address', JSON.stringify(selectedAddress));
+      sessionStorage.setItem('srisai_selected_address', JSON.stringify(selectedAddress));
     } else {
-      localStorage.removeItem('srisai_selected_address');
+      sessionStorage.removeItem('srisai_selected_address');
     }
   }, [selectedAddress]);
 
   useEffect(() => {
-    localStorage.setItem('srisai_cart', JSON.stringify(cart));
-  }, [cart]);
-
-  useEffect(() => {
-    localStorage.setItem('srisai_wishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
-
-  useEffect(() => {
-    localStorage.setItem('srisai_compare', JSON.stringify(comparisonList));
+    sessionStorage.setItem('srisai_compare', JSON.stringify(comparisonList));
   }, [comparisonList]);
 
   useEffect(() => {
-    localStorage.setItem('srisai_orders', JSON.stringify(orders));
-  }, [orders]);
-
-  useEffect(() => {
-    localStorage.setItem('srisai_audit_logs', JSON.stringify(auditLogs));
+    sessionStorage.setItem('srisai_audit_logs', JSON.stringify(auditLogs));
   }, [auditLogs]);
 
   useEffect(() => {
-    localStorage.setItem('srisai_admin_role', adminRole);
+    sessionStorage.setItem('srisai_admin_role', adminRole);
   }, [adminRole]);
 
   useEffect(() => {
-    localStorage.setItem('srisai_whatsapp_settings', JSON.stringify(whatsAppSettings));
+    sessionStorage.setItem('srisai_whatsapp_settings', JSON.stringify(whatsAppSettings));
   }, [whatsAppSettings]);
 
   useEffect(() => {
-    localStorage.setItem('srisai_whatsapp_analytics', JSON.stringify(whatsAppAnalytics));
+    sessionStorage.setItem('srisai_whatsapp_analytics', JSON.stringify(whatsAppAnalytics));
   }, [whatsAppAnalytics]);
 
   useEffect(() => {
-    localStorage.setItem('srisai_notifications', JSON.stringify(notifications));
+    sessionStorage.setItem('srisai_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
   useEffect(() => {
-    localStorage.setItem('srisai_search_history', JSON.stringify(searchHistory));
+    sessionStorage.setItem('srisai_search_history', JSON.stringify(searchHistory));
   }, [searchHistory]);
 
   useEffect(() => {
-    localStorage.setItem('srisai_recently_viewed', JSON.stringify(recentlyViewed));
+    sessionStorage.setItem('srisai_recently_viewed', JSON.stringify(recentlyViewed));
   }, [recentlyViewed]);
 
   useEffect(() => {
-    localStorage.setItem('srisai_instagram_posts', JSON.stringify(instagramPosts));
-  }, [instagramPosts]);
-
-  useEffect(() => {
-    localStorage.setItem('srisai_accessories', JSON.stringify(accessories));
-  }, [accessories]);
-
-  useEffect(() => {
-    localStorage.setItem('srisai_instagram_settings', JSON.stringify(instagramSettings));
+    sessionStorage.setItem('srisai_instagram_settings', JSON.stringify(instagramSettings));
   }, [instagramSettings]);
 
 
   const setCurrentUser = (session: UserSession | null) => {
     setCurrentUserState(session);
     if (session) {
-      localStorage.setItem('srisai_session', JSON.stringify(session));
+      sessionStorage.setItem('srisai_session', JSON.stringify(session));
     } else {
-      localStorage.removeItem('srisai_session');
+      sessionStorage.removeItem('srisai_session');
     }
   };
 
@@ -737,7 +817,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     // Record the Order
-    setOrders(prev => [newOrder, ...prev]);
+    const dbOrder = mapOrderToDbOrder(newOrder);
+    supabase.from('orders').insert(dbOrder).then(({ error }) => {
+      if (error) console.error('Failed to save order to Supabase:', error);
+    });
+
     clearCart();
 
     // Trigger Admin notifications
@@ -985,91 +1069,127 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Admin Device Management
-  const saveDevice = (deviceData: Omit<Device, 'id' | 'views' | 'sales'> & { id?: string }) => {
-    if (deviceData.id) {
-      // Edit
-      setDevices(prev => 
-        prev.map(d => d.id === deviceData.id 
-          ? { 
-              ...d, 
-              ...deviceData,
-              status: deviceData.stockCount > 0 ? (d.status === 'archived' ? 'archived' : 'available') : 'out_of_stock'
-            } as Device 
-          : d
-        )
-      );
-      addAuditLog(`Edited Smartphone Catalog Entry: ${deviceData.brand} ${deviceData.modelName}`, currentUser?.name || 'Admin');
-    } else {
-      // Add
-      const id = `${deviceData.brand.toLowerCase()}-${deviceData.modelName.toLowerCase().replace(/\s+/g, '-')}-${Date.now().toString().slice(-4)}`;
-      const newDevice: Device = {
-        ...deviceData,
-        id,
-        views: 0,
-        sales: 0,
-        status: deviceData.stockCount > 0 ? 'available' : 'out_of_stock'
-      };
-      setDevices(prev => [...prev, newDevice]);
-      addAuditLog(`Added New Smartphone Catalog Entry: ${deviceData.brand} ${deviceData.modelName}`, currentUser?.name || 'Admin');
+  const saveDevice = async (deviceData: Omit<Device, 'id' | 'views' | 'sales'> & { id?: string }) => {
+    try {
+      if (deviceData.id) {
+        // Edit
+        const dbProduct = mapDeviceToDbProduct(deviceData);
+        dbProduct.status = deviceData.stockCount > 0 ? 'available' : 'out_of_stock';
+        const { error } = await supabase.from('products').update(dbProduct).eq('id', deviceData.id);
+        if (error) throw error;
+        addAuditLog(`Edited Smartphone Catalog Entry: ${deviceData.brand} ${deviceData.modelName}`, currentUser?.email || 'Admin');
+      } else {
+        // Add
+        const id = `${deviceData.brand.toLowerCase()}-${deviceData.modelName.toLowerCase().replace(/\s+/g, '-')}-${Date.now().toString().slice(-4)}`;
+        const newDevice: Partial<Device> = {
+          ...deviceData,
+          id,
+          views: 0,
+          sales: 0,
+          status: deviceData.stockCount > 0 ? 'available' : 'out_of_stock'
+        };
+        const dbProduct = mapDeviceToDbProduct(newDevice);
+        const { error } = await supabase.from('products').insert(dbProduct);
+        if (error) throw error;
+        addAuditLog(`Added New Smartphone Catalog Entry: ${deviceData.brand} ${deviceData.modelName}`, currentUser?.email || 'Admin');
+      }
+    } catch (err) {
+      console.error('Failed to save device:', err);
     }
   };
 
-  const duplicateDevice = (id: string) => {
+  const duplicateDevice = async (id: string) => {
     const source = devices.find(d => d.id === id);
     if (!source) return;
 
-    const dup: Device = {
-      ...source,
-      id: `${source.id}-copy-${Date.now().toString().slice(-3)}`,
-      modelName: `${source.modelName} (Copy)`,
-      views: 0,
-      sales: 0
-    };
-
-    setDevices(prev => [...prev, dup]);
-    addAuditLog(`Duplicated Smartphone Entry: ID ${id}`, currentUser?.name || 'Admin');
-  };
-
-  const deleteDevice = (id: string) => {
-    setDevices(prev => prev.filter(d => d.id !== id));
-    // Remove from flash sale and cart
-    setFlashSales(prev => prev.filter(fs => fs.deviceId !== id));
-    setCart(prev => prev.filter(item => item.deviceId !== id));
-    addAuditLog(`Deleted Smartphone Entry: ID ${id}`, currentUser?.name || 'Admin');
-  };
-
-  const archiveDevice = (id: string) => {
-    setDevices(prev => 
-      prev.map(d => d.id === id ? { ...d, status: 'archived' as const } : d)
-    );
-    addAuditLog(`Archived Smartphone Entry: ID ${id}`, currentUser?.name || 'Admin');
-  };
-
-  // Admin Banner Management
-  const saveBanner = (bannerData: Omit<Banner, 'id'> & { id?: string }) => {
-    if (bannerData.id) {
-      setBanners(prev => prev.map(b => b.id === bannerData.id ? { ...b, ...bannerData } as Banner : b));
-      addAuditLog(`Edited Banner Entry: ${bannerData.title}`, currentUser?.name || 'Admin');
-    } else {
-      const id = `banner-${Date.now()}`;
-      const newBanner: Banner = {
-        ...bannerData,
-        id,
-        order: banners.length + 1
+    try {
+      const dup: Device = {
+        ...source,
+        id: `${source.id}-copy-${Date.now().toString().slice(-3)}`,
+        modelName: `${source.modelName} (Copy)`,
+        views: 0,
+        sales: 0
       };
-      setBanners(prev => [...prev, newBanner]);
-      addAuditLog(`Added New Banner Entry: ${bannerData.title}`, currentUser?.name || 'Admin');
+      const dbProduct = mapDeviceToDbProduct(dup);
+      const { error } = await supabase.from('products').insert(dbProduct);
+      if (error) throw error;
+      addAuditLog(`Duplicated Smartphone Entry: ID ${id}`, currentUser?.email || 'Admin');
+    } catch (err) {
+      console.error('Failed to duplicate device:', err);
     }
   };
 
-  const deleteBanner = (id: string) => {
-    setBanners(prev => prev.filter(b => b.id !== id).map((b, idx) => ({ ...b, order: idx + 1 })));
-    addAuditLog(`Deleted Banner ID: ${id}`, currentUser?.name || 'Admin');
+  const deleteDevice = async (id: string) => {
+    try {
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) throw error;
+      setCart(prev => prev.filter(item => item.deviceId !== id));
+      addAuditLog(`Deleted Smartphone Entry: ID ${id}`, currentUser?.email || 'Admin');
+    } catch (err) {
+      console.error('Failed to delete device:', err);
+    }
   };
 
-  const reorderBanners = (list: Banner[]) => {
-    setBanners(list.map((b, idx) => ({ ...b, order: idx + 1 })));
-    addAuditLog(`Reordered Banners Display Sequence`, currentUser?.name || 'Admin');
+  const archiveDevice = async (id: string) => {
+    try {
+      const { error } = await supabase.from('products').update({ status: 'archived' }).eq('id', id);
+      if (error) throw error;
+      addAuditLog(`Archived Smartphone Entry: ID ${id}`, currentUser?.email || 'Admin');
+    } catch (err) {
+      console.error('Failed to archive device:', err);
+    }
+  };
+
+  // Admin Banner Management
+  const saveBanner = async (bannerData: Omit<Banner, 'id'> & { id?: string }) => {
+    try {
+      if (bannerData.id) {
+        const dbBanner = mapBannerToDbBanner(bannerData);
+        const { error } = await supabase.from('banners').update(dbBanner).eq('id', bannerData.id);
+        if (error) throw error;
+        addAuditLog(`Edited Banner Entry: ${bannerData.title}`, currentUser?.email || 'Admin');
+      } else {
+        const id = `banner-${Date.now()}`;
+        const newBanner: Partial<Banner> = {
+          ...bannerData,
+          id,
+          order: banners.length + 1
+        };
+        const dbBanner = mapBannerToDbBanner(newBanner);
+        const { error } = await supabase.from('banners').insert(dbBanner);
+        if (error) throw error;
+        addAuditLog(`Added New Banner Entry: ${bannerData.title}`, currentUser?.email || 'Admin');
+      }
+    } catch (err) {
+      console.error('Failed to save banner:', err);
+    }
+  };
+
+  const deleteBanner = async (id: string) => {
+    try {
+      const { error } = await supabase.from('banners').delete().eq('id', id);
+      if (error) throw error;
+      addAuditLog(`Deleted Banner ID: ${id}`, currentUser?.email || 'Admin');
+    } catch (err) {
+      console.error('Failed to delete banner:', err);
+    }
+  };
+
+  const reorderBanners = async (list: Banner[]) => {
+    try {
+      const updates = list.map((b, idx) => ({
+        id: b.id,
+        title: b.title,
+        image_url: b.imageUrl,
+        active: b.enabled,
+        priority: idx + 1
+      }));
+      const { error } = await supabase.from('banners').upsert(updates);
+      if (error) throw error;
+      addAuditLog(`Reordered Banners Display Sequence`, currentUser?.email || 'Admin');
+    } catch (err) {
+      console.error('Failed to reorder banners:', err);
+    }
   };
 
   // Admin Flash Sale Management
@@ -1168,6 +1288,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
+      dbLoading,
       theme, toggleTheme,
       currentUser, setCurrentUser,
       devices, banners, flashSales, admins,

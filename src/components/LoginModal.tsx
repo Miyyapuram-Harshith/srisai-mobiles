@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { generateOTP, verifyOTP, logLoginAttempt } from '../utils/authService';
 import { X, Mail, Key, ShieldCheck, ShieldAlert, Sparkles } from 'lucide-react';
 import { PermissionRole } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -91,7 +92,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     }, 800);
   };
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setInfoMsg(null);
@@ -104,60 +105,75 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
     setLoading(true);
 
-    setTimeout(() => {
-      const verifyRes = verifyOTP(cleanEmail, otp);
-      setLoading(false);
+    // Simulate short latency for UX animation
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-      if (verifyRes.success) {
-        // Resolve user role based on email in admin database
-        const adminMatch = admins.find(a => a.email.toLowerCase() === cleanEmail);
-        
-        let role: PermissionRole = 'customer';
-        if (adminMatch) {
-          if (!adminMatch.enabled) {
-            setErrorMsg('This administrator account has been disabled. Please contact support.');
-            logLoginAttempt(cleanEmail, adminMatch.role, 'failed_otp', navigator.userAgent);
-            return;
-          }
-          role = adminMatch.role;
-        }
+    const verifyRes = verifyOTP(cleanEmail, otp);
+    setLoading(false);
 
-        // Complete Session
-        setCurrentUser({
-          email: cleanEmail,
-          role,
-          name: adminMatch ? adminMatch.name : 'Customer',
-          mobileNumber: '+91 ******' + Math.floor(1000 + Math.random() * 9000), // simulated registered mobile
-          loginTime: new Date().toISOString(),
-          deviceInfo: navigator.userAgent
-        });
+    if (verifyRes.success) {
+      // Resolve user role based on email in admin database / Supabase database
+      const adminMatch = admins.find(a => a.email.toLowerCase() === cleanEmail);
+      
+      let role: PermissionRole = 'customer';
+      let name = 'Customer';
 
-        // Log successful login
-        logLoginAttempt(cleanEmail, role, 'success', navigator.userAgent);
+      try {
+        const { data: userRecord, error: fetchError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', cleanEmail)
+          .single();
 
-        onClose();
+        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
 
-        // Redirect based on role
-        if (role !== 'customer') {
-          navigateTo('admin');
+        if (userRecord) {
+          role = userRecord.role as PermissionRole;
+          name = role === 'customer' ? 'Customer' : (adminMatch ? adminMatch.name : 'Administrator');
         } else {
-          navigateTo('home');
+          // Register new customer in Supabase user table
+          role = adminMatch ? adminMatch.role : 'customer';
+          name = adminMatch ? adminMatch.name : 'Customer';
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert({ email: cleanEmail, role });
+          if (insertError) throw insertError;
         }
 
-      } else {
-        setErrorMsg(verifyRes.message);
-        
-        // Log OTP Verification failure
-        logLoginAttempt(cleanEmail, 'unknown', 'failed_otp', navigator.userAgent);
-
-        // Notify admins about failed attempts
-        addNotification(
-          'failed_otp',
-          `Failed OTP login attempt for ${cleanEmail}`,
-          { email: cleanEmail }
-        );
+        if (adminMatch && !adminMatch.enabled) {
+          setErrorMsg('This administrator account has been disabled. Please contact support.');
+          logLoginAttempt(cleanEmail, adminMatch.role, 'failed_otp', navigator.userAgent);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to resolve role or register user in Supabase:', err);
       }
-    }, 800);
+
+      // Complete Session
+      setCurrentUser({
+        email: cleanEmail,
+        role,
+        name,
+        mobileNumber: '+91 ******' + Math.floor(1000 + Math.random() * 9000), // simulated registered mobile
+        loginTime: new Date().toISOString(),
+        deviceInfo: navigator.userAgent
+      });
+
+      // Log successful login
+      logLoginAttempt(cleanEmail, role, 'success', navigator.userAgent);
+
+      onClose();
+
+      // Redirect based on role
+      if (role !== 'customer') {
+        navigateTo('admin');
+      } else {
+        navigateTo('home');
+      }
+    } else {
+      setErrorMsg(verifyRes.message);
+      logLoginAttempt(cleanEmail, 'unknown', 'failed_otp', navigator.userAgent);
+    }
   };
 
   return (

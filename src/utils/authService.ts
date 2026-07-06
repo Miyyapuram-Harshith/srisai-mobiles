@@ -94,7 +94,7 @@ export const logLoginAttempt = (
   status: 'success' | 'failed_otp' | 'rate_limited',
   deviceInfo: string
 ): LoginHistoryEntry => {
-  const historyStr = localStorage.getItem('srisai_login_history') || '[]';
+  const historyStr = sessionStorage.getItem('srisai_login_history') || '[]';
   const historyList = JSON.parse(historyStr);
 
   const entry: LoginHistoryEntry = {
@@ -107,6 +107,6 @@ export const logLoginAttempt = (
   };
 
   historyList.unshift(entry);
-  localStorage.setItem('srisai_login_history', JSON.stringify(historyList.slice(0, 100))); // keep last 100 entries
+  sessionStorage.setItem('srisai_login_history', JSON.stringify(historyList.slice(0, 100))); // keep last 100 entries
   return entry;
 };
