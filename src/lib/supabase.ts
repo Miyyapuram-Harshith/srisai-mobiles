@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { Device, Banner, Order, PermissionRole, Accessory, FlashSale } from '../types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project-id.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE1OTg4MTI4MDAsImV4cCI6MjI0NDQ0MTYwMH0.placeholder';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://qhkgoasyvbawugdsdhko.supabase.co/rest/v1/';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFoa2dvYXN5dmJhd3VnZHNkaGtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNDEwNDcsImV4cCI6MjA5ODkxNzA0N30.hb8nDimWYrix3qTK1_NQWiHXLpZXeAVq_3Oo__OkZbs';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -136,7 +136,7 @@ export const mapDeviceToDbProduct = (device: Partial<Device>): any => ({
   status: device.status,
   views: device.views,
   sales: device.sales,
-  
+
   // preowned fields
   factory_sealed: device.factorySealed,
   official_brand_warranty: device.officialBrandWarrantyAvailable,
@@ -258,7 +258,7 @@ export const mapOrderToDbOrder = (order: Partial<Order>): any => ({
   total: order.total,
   status: order.status,
   created_at: order.orderDate,
-  
+
   // extra fields for CRM consistency
   customer_email: order.customerEmail,
   subtotal: order.subtotal,
