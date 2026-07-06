@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Device, Banner, Order, PermissionRole } from '../types';
+import { Device, Banner, Order, PermissionRole, Accessory, FlashSale } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project-id.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE1OTg4MTI4MDAsImV4cCI6MjI0NDQ0MTYwMH0.placeholder';
@@ -282,4 +282,70 @@ export const mapOrderToDbOrder = (order: Partial<Order>): any => ({
   timeline: order.timeline,
   internal_notes: order.internalNotes,
   call_logs: order.callLogs,
+});
+
+// ==========================================
+// 4. Accessory Mappers
+// ==========================================
+export const mapDbAccessoryToAccessory = (db: any): Accessory => ({
+  id: db.id,
+  category: db.category,
+  brand: db.brand,
+  name: db.name,
+  price: Number(db.price),
+  offerPrice: Number(db.discount_price || db.price),
+  stockCount: Number(db.stock || 0),
+  description: db.description || '',
+  colors: Array.isArray(db.colors) ? db.colors : [],
+  images: Array.isArray(db.images) ? db.images : [],
+  status: db.status || 'available',
+  specifications: db.specifications || {},
+  features: Array.isArray(db.features) ? db.features : [],
+  views: Number(db.views || 0),
+  sales: Number(db.sales || 0),
+  createdAt: db.created_at || new Date().toISOString(),
+});
+
+export const mapAccessoryToDbAccessory = (acc: Partial<Accessory>): any => ({
+  id: acc.id,
+  category: acc.category,
+  brand: acc.brand,
+  name: acc.name,
+  price: acc.price,
+  discount_price: acc.offerPrice,
+  stock: acc.stockCount,
+  description: acc.description,
+  colors: acc.colors,
+  images: acc.images,
+  status: acc.status,
+  specifications: acc.specifications,
+  features: acc.features,
+  views: acc.views,
+  sales: acc.sales,
+  created_at: acc.createdAt,
+});
+
+// ==========================================
+// 5. Flash Sale Mappers
+// ==========================================
+export const mapDbFlashSaleToFlashSale = (db: any): FlashSale => ({
+  id: db.id,
+  deviceId: db.device_id,
+  discountPercentage: Number(db.discount_percentage || 0),
+  stockLimit: Number(db.stock_limit || 0),
+  soldCount: Number(db.sold_count || 0),
+  startTime: db.start_time || new Date().toISOString(),
+  endTime: db.end_time || new Date().toISOString(),
+  enabled: db.enabled,
+});
+
+export const mapFlashSaleToDbFlashSale = (fs: Partial<FlashSale>): any => ({
+  id: fs.id,
+  device_id: fs.deviceId,
+  discount_percentage: fs.discountPercentage,
+  stock_limit: fs.stockLimit,
+  sold_count: fs.soldCount,
+  start_time: fs.startTime,
+  end_time: fs.endTime,
+  enabled: fs.enabled,
 });

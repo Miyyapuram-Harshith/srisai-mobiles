@@ -14,11 +14,18 @@ import {
   mapDbBannerToBanner, 
   mapBannerToDbBanner, 
   mapDbOrderToOrder, 
-  mapOrderToDbOrder 
+  mapOrderToDbOrder,
+  mapDbAccessoryToAccessory,
+  mapAccessoryToDbAccessory,
+  mapDbFlashSaleToFlashSale,
+  mapFlashSaleToDbFlashSale
 } from '../lib/supabase';
 
 interface AppContextType {
   dbLoading: boolean;
+  dbError: string | null;
+  retryDbConnection: () => void;
+  bypassDbConnection: () => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   currentUser: UserSession | null;
@@ -132,9 +139,17 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+async function fetchWithTimeout(promise: Promise<any>, timeoutMs = 4000): Promise<any> {
+  return Promise.race([
+    promise,
+    new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Connection timed out after 4 seconds')), timeoutMs))
+  ]);
+}
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Database loading state
+  // Database loading & error states
   const [dbLoading, setDbLoading] = useState(true);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   // Theme state
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -183,6 +198,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [adminRole, setAdminRole] = useState<PermissionRole>(() => {
+    const savedSession = sessionStorage.getItem('srisai_session');
+    if (savedSession) {
+      try {
+        const parsed = JSON.parse(savedSession);
+        if (parsed && parsed.role && parsed.role !== 'customer') {
+          return parsed.role;
+        }
+      } catch (e) {}
+    }
     const saved = sessionStorage.getItem('srisai_admin_role');
     return (saved as PermissionRole) || 'super_admin';
   });
@@ -285,64 +309,122 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // 1. Seed & Load DB on mount
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        setDbLoading(true);
+  const loadInitialData = async () => {
+    try {
+      setDbLoading(true);
+      setDbError(null);
 
-        // Fetch products
-        let { data: productsData, error: pError } = await supabase.from('products').select('*');
-        if (pError) throw pError;
-        
-        if (!productsData || productsData.length === 0) {
-          const seeds = INITIAL_DEVICES.map(mapDeviceToDbProduct);
-          await supabase.from('products').insert(seeds);
-          const { data: refetched } = await supabase.from('products').select('*');
-          productsData = refetched || [];
-        }
-        setDevices(productsData.map(mapDbProductToDevice));
-
-        // Fetch banners
-        let { data: bannersData, error: bError } = await supabase.from('banners').select('*');
-        if (bError) throw bError;
-
-        if (!bannersData || bannersData.length === 0) {
-          const seeds = INITIAL_BANNERS.map(mapBannerToDbBanner);
-          await supabase.from('banners').insert(seeds);
-          const { data: refetched } = await supabase.from('banners').select('*');
-          bannersData = refetched || [];
-        }
-        setBanners(bannersData.map(mapDbBannerToBanner).sort((a, b) => a.order - b.order));
-
-        // Fetch orders
-        let { data: ordersData, error: oError } = await supabase.from('orders').select('*');
-        if (oError) throw oError;
-
-        if (!ordersData || ordersData.length === 0) {
-          const seeds = INITIAL_ORDERS.map(mapOrderToDbOrder);
-          await supabase.from('orders').insert(seeds);
-          const { data: refetched } = await supabase.from('orders').select('*');
-          ordersData = refetched || [];
-        }
-        setOrders(ordersData.map(mapDbOrderToOrder).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()));
-
-        // Ensure users are seeded
-        const { data: usersData } = await supabase.from('users').select('*');
-        if (!usersData || usersData.length === 0) {
-          const adminUsers = INITIAL_ADMINS.map(adm => ({
-            email: adm.email.toLowerCase(),
-            role: adm.role
-          }));
-          await supabase.from('users').insert(adminUsers);
-        }
-
-      } catch (err) {
-        console.error('Error seeding/fetching database:', err);
-      } finally {
-        setDbLoading(false);
+      // Fetch products
+      let { data: productsData, error: pError } = await fetchWithTimeout(supabase.from('products').select('*') as any, 4000);
+      if (pError) throw pError;
+      
+      if (!productsData || productsData.length === 0) {
+        const seeds = INITIAL_DEVICES.map(mapDeviceToDbProduct);
+        await supabase.from('products').insert(seeds);
+        const { data: refetched } = await supabase.from('products').select('*');
+        productsData = refetched || [];
       }
-    };
+      setDevices(productsData.map(mapDbProductToDevice));
 
+      // Fetch banners
+      let { data: bannersData, error: bError } = await fetchWithTimeout(supabase.from('banners').select('*') as any, 4000);
+      if (bError) throw bError;
+
+      if (!bannersData || bannersData.length === 0) {
+        const seeds = INITIAL_BANNERS.map(mapBannerToDbBanner);
+        await supabase.from('banners').insert(seeds);
+        const { data: refetched } = await supabase.from('banners').select('*');
+        bannersData = refetched || [];
+      }
+      setBanners(bannersData.map(mapDbBannerToBanner).sort((a: Banner, b: Banner) => a.order - b.order));
+
+      // Fetch orders
+      let { data: ordersData, error: oError } = await fetchWithTimeout(supabase.from('orders').select('*') as any, 4000);
+      if (oError) throw oError;
+
+      if (!ordersData || ordersData.length === 0) {
+        const seeds = INITIAL_ORDERS.map(mapOrderToDbOrder);
+        await supabase.from('orders').insert(seeds);
+        const { data: refetched } = await supabase.from('orders').select('*');
+        ordersData = refetched || [];
+      }
+      setOrders(ordersData.map(mapDbOrderToOrder).sort((a: Order, b: Order) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()));
+
+      // Ensure users are seeded
+      const { data: usersData, error: uError } = await fetchWithTimeout(supabase.from('users').select('*') as any, 4000);
+      if (uError) throw uError;
+      if (!usersData || usersData.length === 0) {
+        const adminUsers = INITIAL_ADMINS.map(adm => ({
+          email: adm.email.toLowerCase(),
+          role: adm.role
+        }));
+        await supabase.from('users').insert(adminUsers);
+      }
+
+      // Fetch flash sales
+      let flashSalesData: any[] = [];
+      try {
+        const { data, error } = await fetchWithTimeout(supabase.from('flash_sales').select('*') as any, 4000);
+        if (!error && data) {
+          flashSalesData = data;
+        } else {
+          const seeds = INITIAL_FLASH_SALES.map(mapFlashSaleToDbFlashSale);
+          await supabase.from('flash_sales').insert(seeds);
+          const { data: refetched } = await supabase.from('flash_sales').select('*');
+          flashSalesData = refetched || [];
+        }
+      } catch (e) {
+        console.warn('Flash sales seeding/fetch failed, falling back to seed:', e);
+      }
+      if (flashSalesData && flashSalesData.length > 0) {
+        setFlashSales(flashSalesData.map(mapDbFlashSaleToFlashSale));
+      } else {
+        setFlashSales(INITIAL_FLASH_SALES);
+      }
+
+      // Fetch accessories
+      let accessoriesData: any[] = [];
+      try {
+        const { data, error } = await fetchWithTimeout(supabase.from('accessories').select('*') as any, 4000);
+        if (!error && data) {
+          accessoriesData = data;
+        } else {
+          const seeds = INITIAL_ACCESSORIES.map(mapAccessoryToDbAccessory);
+          await supabase.from('accessories').insert(seeds);
+          const { data: refetched } = await supabase.from('accessories').select('*');
+          accessoriesData = refetched || [];
+        }
+      } catch (e) {
+        console.warn('Accessories seeding/fetch failed, falling back to seed:', e);
+      }
+      if (accessoriesData && accessoriesData.length > 0) {
+        setAccessories(accessoriesData.map(mapDbAccessoryToAccessory));
+      } else {
+        setAccessories(INITIAL_ACCESSORIES);
+      }
+
+    } catch (err: any) {
+      console.error('Error seeding/fetching database:', err);
+      setDbError(err.message || 'Failed to connect to Supabase database');
+      if (devices.length === 0) setDevices(INITIAL_DEVICES);
+      if (banners.length === 0) setBanners(INITIAL_BANNERS);
+    } finally {
+      setDbLoading(false);
+    }
+  };
+
+  const retryDbConnection = () => {
+    loadInitialData();
+  };
+
+  const bypassDbConnection = () => {
+    setDbError(null);
+    setDbLoading(false);
+    if (devices.length === 0) setDevices(INITIAL_DEVICES);
+    if (banners.length === 0) setBanners(INITIAL_BANNERS);
+  };
+
+  useEffect(() => {
     loadInitialData();
   }, []);
 
@@ -402,10 +484,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       .subscribe();
 
+    const flashSalesChannel = supabase
+      .channel('flash-sales-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'flash_sales' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newSale = mapDbFlashSaleToFlashSale(payload.new);
+          setFlashSales(prev => {
+            if (prev.some(fs => fs.id === newSale.id)) return prev;
+            return [...prev, newSale];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedSale = mapDbFlashSaleToFlashSale(payload.new);
+          setFlashSales(prev => prev.map(fs => fs.id === updatedSale.id ? updatedSale : fs));
+        } else if (payload.eventType === 'DELETE') {
+          setFlashSales(prev => prev.filter(fs => fs.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    const accessoriesChannel = supabase
+      .channel('accessories-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'accessories' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newAcc = mapDbAccessoryToAccessory(payload.new);
+          setAccessories(prev => {
+            if (prev.some(a => a.id === newAcc.id)) return prev;
+            return [...prev, newAcc];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedAcc = mapDbAccessoryToAccessory(payload.new);
+          setAccessories(prev => prev.map(a => a.id === updatedAcc.id ? updatedAcc : a));
+        } else if (payload.eventType === 'DELETE') {
+          setAccessories(prev => prev.filter(a => a.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(productsChannel);
       supabase.removeChannel(bannersChannel);
       supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(flashSalesChannel);
+      supabase.removeChannel(accessoriesChannel);
     };
   }, []);
 
@@ -516,8 +636,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUserState(session);
     if (session) {
       sessionStorage.setItem('srisai_session', JSON.stringify(session));
+      if (session.role !== 'customer') {
+        setAdminRole(session.role);
+      }
     } else {
       sessionStorage.removeItem('srisai_session');
+      setAdminRole('customer' as any);
     }
   };
 
@@ -1193,60 +1317,93 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Admin Flash Sale Management
-  const saveFlashSale = (saleData: Omit<FlashSale, 'id' | 'soldCount'> & { id?: string }) => {
-    if (saleData.id) {
-      setFlashSales(prev => prev.map(fs => fs.id === saleData.id ? { ...fs, ...saleData } as FlashSale : fs));
-      addAuditLog(`Edited Flash Sale ID: ${saleData.id}`, currentUser?.name || 'Admin');
-    } else {
-      const id = `fs-${Date.now()}`;
-      const newSale: FlashSale = {
-        ...saleData,
-        id,
-        soldCount: 0
-      };
-      setFlashSales(prev => [...prev, newSale]);
-      addAuditLog(`Added New Flash Sale Entry`, currentUser?.name || 'Admin');
+  const saveFlashSale = async (saleData: Omit<FlashSale, 'id' | 'soldCount'> & { id?: string }) => {
+    try {
+      if (saleData.id) {
+        const dbSale = mapFlashSaleToDbFlashSale(saleData);
+        const { error } = await supabase.from('flash_sales').update(dbSale).eq('id', saleData.id);
+        if (error) throw error;
+        setFlashSales(prev => prev.map(fs => fs.id === saleData.id ? { ...fs, ...saleData } as FlashSale : fs));
+        addAuditLog(`Edited Flash Sale ID: ${saleData.id}`, currentUser?.email || 'Admin');
+      } else {
+        const id = `fs-${Date.now()}`;
+        const newSale: FlashSale = {
+          ...saleData,
+          id,
+          soldCount: 0
+        };
+        const dbSale = mapFlashSaleToDbFlashSale(newSale);
+        const { error } = await supabase.from('flash_sales').insert(dbSale);
+        if (error) throw error;
+        setFlashSales(prev => [...prev, newSale]);
+        addAuditLog(`Added New Flash Sale Entry`, currentUser?.email || 'Admin');
+      }
+    } catch (err) {
+      console.error('Failed to save flash sale:', err);
     }
   };
 
-  const deleteFlashSale = (id: string) => {
-    setFlashSales(prev => prev.filter(fs => fs.id !== id));
-    addAuditLog(`Deleted Flash Sale Entry ID: ${id}`, currentUser?.name || 'Admin');
+  const deleteFlashSale = async (id: string) => {
+    try {
+      const { error } = await supabase.from('flash_sales').delete().eq('id', id);
+      if (error) throw error;
+      setFlashSales(prev => prev.filter(fs => fs.id !== id));
+      addAuditLog(`Deleted Flash Sale Entry ID: ${id}`, currentUser?.email || 'Admin');
+    } catch (err) {
+      console.error('Failed to delete flash sale:', err);
+    }
   };
 
   // Admin Accessories Management
-  const saveAccessory = (accessoryData: Omit<Accessory, 'id' | 'views' | 'sales' | 'createdAt'> & { id?: string }) => {
-    if (accessoryData.id) {
-      setAccessories(prev => 
-        prev.map(a => a.id === accessoryData.id 
-          ? { 
-              ...a, 
-              ...accessoryData,
-              status: accessoryData.stockCount > 0 ? (a.status === 'archived' ? 'archived' : 'available') : 'out_of_stock'
-            } as Accessory 
-          : a
-        )
-      );
-      addAuditLog(`Edited Accessory Entry: ${accessoryData.name}`, currentUser?.name || 'Admin');
-    } else {
-      const id = `acc-${accessoryData.category.slice(0,3)}-${Date.now().toString().slice(-4)}`;
-      const newAccessory: Accessory = {
-        ...accessoryData,
-        id,
-        views: 0,
-        sales: 0,
-        status: accessoryData.stockCount > 0 ? 'available' : 'out_of_stock',
-        createdAt: new Date().toISOString()
-      };
-      setAccessories(prev => [...prev, newAccessory]);
-      addAuditLog(`Added New Accessory: ${accessoryData.name}`, currentUser?.name || 'Admin');
+  const saveAccessory = async (accessoryData: Omit<Accessory, 'id' | 'views' | 'sales' | 'createdAt'> & { id?: string }) => {
+    try {
+      if (accessoryData.id) {
+        const dbAcc = mapAccessoryToDbAccessory(accessoryData);
+        dbAcc.status = accessoryData.stockCount > 0 ? 'available' : 'out_of_stock';
+        const { error } = await supabase.from('accessories').update(dbAcc).eq('id', accessoryData.id);
+        if (error) throw error;
+        setAccessories(prev => 
+          prev.map(a => a.id === accessoryData.id 
+            ? { 
+                ...a, 
+                ...accessoryData,
+                status: accessoryData.stockCount > 0 ? 'available' : 'out_of_stock'
+              } as Accessory 
+            : a
+          )
+        );
+        addAuditLog(`Edited Accessory Entry: ${accessoryData.name}`, currentUser?.email || 'Admin');
+      } else {
+        const id = `acc-${accessoryData.category.slice(0,3)}-${Date.now().toString().slice(-4)}`;
+        const newAccessory: Accessory = {
+          ...accessoryData,
+          id,
+          views: 0,
+          sales: 0,
+          status: accessoryData.stockCount > 0 ? 'available' : 'out_of_stock',
+          createdAt: new Date().toISOString()
+        };
+        const dbAcc = mapAccessoryToDbAccessory(newAccessory);
+        const { error } = await supabase.from('accessories').insert(dbAcc);
+        if (error) throw error;
+        setAccessories(prev => [...prev, newAccessory]);
+        addAuditLog(`Added New Accessory: ${accessoryData.name}`, currentUser?.email || 'Admin');
+      }
+    } catch (err) {
+      console.error('Failed to save accessory:', err);
     }
   };
 
-  const deleteAccessory = (id: string) => {
-    setAccessories(prev => prev.filter(a => a.id !== id));
-    setCart(prev => prev.filter(item => item.deviceId !== id));
-    addAuditLog(`Deleted Accessory Entry ID: ${id}`, currentUser?.name || 'Admin');
+  const deleteAccessory = async (id: string) => {
+    try {
+      const { error } = await supabase.from('accessories').delete().eq('id', id);
+      if (error) throw error;
+      setAccessories(prev => prev.filter(a => a.id !== id));
+      setCart(prev => prev.filter(item => item.deviceId !== id));
+      addAuditLog(`Deleted Accessory Entry ID: ${id}`, currentUser?.email || 'Admin');
+    } catch (err) {
+      console.error('Failed to delete accessory:', err);
+    }
   };
 
   const incrementAccessoryViews = (id: string) => {
@@ -1289,6 +1446,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider value={{
       dbLoading,
+      dbError,
+      retryDbConnection,
+      bypassDbConnection,
       theme, toggleTheme,
       currentUser, setCurrentUser,
       devices, banners, flashSales, admins,

@@ -107,3 +107,100 @@ ON CONFLICT (email) DO UPDATE SET
 INSERT INTO analytics (id, daily_sales, monthly_sales, visitors, conversion_rate) VALUES
 ('analytics-main', 12500, 375000, 1420, 2.8)
 ON CONFLICT (id) DO NOTHING;
+
+-- 5. Create Accessories and Flash Sales Tables (If they don't exist)
+CREATE TABLE IF NOT EXISTS accessories (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  brand TEXT NOT NULL,
+  name TEXT NOT NULL,
+  price NUMERIC NOT NULL,
+  discount_price NUMERIC,
+  stock INTEGER DEFAULT 0,
+  description TEXT DEFAULT '',
+  colors JSONB DEFAULT '[]'::jsonb,
+  images JSONB DEFAULT '[]'::jsonb,
+  status TEXT DEFAULT 'available',
+  specifications JSONB DEFAULT '{}'::jsonb,
+  features JSONB DEFAULT '[]'::jsonb,
+  views INTEGER DEFAULT 0,
+  sales INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS flash_sales (
+  id TEXT PRIMARY KEY,
+  device_id TEXT NOT NULL,
+  discount_percentage NUMERIC DEFAULT 0,
+  stock_limit INTEGER DEFAULT 0,
+  sold_count INTEGER DEFAULT 0,
+  start_time TEXT,
+  end_time TEXT,
+  enabled BOOLEAN DEFAULT true NOT NULL
+);
+
+-- Enable Row Level Security & Policies for Accessories and Flash Sales
+ALTER TABLE accessories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE flash_sales ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing if any, and create clean policies
+DROP POLICY IF EXISTS "Allow public select accessories" ON accessories;
+CREATE POLICY "Allow public select accessories" ON accessories FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow admins insert accessories" ON accessories;
+CREATE POLICY "Allow admins insert accessories" ON accessories FOR INSERT TO authenticated WITH CHECK (exists (select 1 from users where id = auth.uid() and role in ('admin', 'super_admin')));
+DROP POLICY IF EXISTS "Allow admins update accessories" ON accessories;
+CREATE POLICY "Allow admins update accessories" ON accessories FOR UPDATE TO authenticated USING (exists (select 1 from users where id = auth.uid() and role in ('admin', 'super_admin')));
+DROP POLICY IF EXISTS "Allow super_admin delete accessories" ON accessories;
+CREATE POLICY "Allow super_admin delete accessories" ON accessories FOR DELETE TO authenticated USING (exists (select 1 from users where id = auth.uid() and role = 'super_admin'));
+
+DROP POLICY IF EXISTS "Allow public select flash_sales" ON flash_sales;
+CREATE POLICY "Allow public select flash_sales" ON flash_sales FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow admins insert flash_sales" ON flash_sales;
+CREATE POLICY "Allow admins insert flash_sales" ON flash_sales FOR INSERT TO authenticated WITH CHECK (exists (select 1 from users where id = auth.uid() and role in ('admin', 'super_admin')));
+DROP POLICY IF EXISTS "Allow admins update flash_sales" ON flash_sales;
+CREATE POLICY "Allow admins update flash_sales" ON flash_sales FOR UPDATE TO authenticated USING (exists (select 1 from users where id = auth.uid() and role in ('admin', 'super_admin')));
+DROP POLICY IF EXISTS "Allow super_admin delete flash_sales" ON flash_sales;
+CREATE POLICY "Allow super_admin delete flash_sales" ON flash_sales FOR DELETE TO authenticated USING (exists (select 1 from users where id = auth.uid() and role = 'super_admin'));
+
+-- Safely add tables to supabase_realtime publication
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+  
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE products;
+  EXCEPTION WHEN duplicate_object OR others THEN NULL;
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE banners;
+  EXCEPTION WHEN duplicate_object OR others THEN NULL;
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+  EXCEPTION WHEN duplicate_object OR others THEN NULL;
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE users;
+  EXCEPTION WHEN duplicate_object OR others THEN NULL;
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE analytics;
+  EXCEPTION WHEN duplicate_object OR others THEN NULL;
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE accessories;
+  EXCEPTION WHEN duplicate_object OR others THEN NULL;
+  END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE flash_sales;
+  EXCEPTION WHEN duplicate_object OR others THEN NULL;
+  END;
+END $$;

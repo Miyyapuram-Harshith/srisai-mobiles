@@ -37,6 +37,9 @@ const Instagram: React.FC<{ size?: number; style?: React.CSSProperties; fill?: s
 export const App: React.FC = () => {
   const { 
     dbLoading,
+    dbError,
+    retryDbConnection,
+    bypassDbConnection,
     currentRoute, devices, accessories, wishlist, navigateTo, theme,
     instagramPosts, instagramSettings, trackInstagramPostView, trackInstagramPostClick,
     addToCart, toggleWishlist
@@ -1483,7 +1486,7 @@ export const App: React.FC = () => {
 
   const isRouteAdmin = currentRoute.startsWith('admin');
 
-  if (dbLoading) {
+  if (dbLoading || dbError) {
     return (
       <div style={{
         display: 'flex',
@@ -1491,19 +1494,65 @@ export const App: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        gap: '16px',
+        gap: '20px',
         backgroundColor: '#0f172a',
-        color: '#94a3b8'
+        color: '#94a3b8',
+        padding: '24px',
+        textAlign: 'center'
       }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          border: '4px solid rgba(255, 255, 255, 0.1)',
-          borderTopColor: '#3b82f6',
-          animation: 'spin 1s linear infinite'
-        }} />
-        <span style={{ fontSize: '14px', fontWeight: 500 }}>Connecting to Sri Sai database...</span>
+        {dbError ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', maxWidth: '380px' }}>
+            <div style={{ color: '#ef4444', fontSize: '32px' }}>⚠️</div>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc', margin: 0 }}>Database Connection Failed</h2>
+            <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+              {dbError}
+            </p>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+              <button 
+                onClick={retryDbConnection} 
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: 'none',
+                  backgroundColor: '#3b82f6',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Retry Connection
+              </button>
+              <button 
+                onClick={bypassDbConnection} 
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: '1px solid #334155',
+                  backgroundColor: 'transparent',
+                  color: '#94a3b8',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Continue Offline
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              border: '4px solid rgba(255, 255, 255, 0.1)',
+              borderTopColor: '#3b82f6',
+              animation: 'spin 1s linear infinite'
+            }} />
+            <span style={{ fontSize: '14px', fontWeight: 500 }}>Connecting to Sri Sai database...</span>
+          </div>
+        )}
       </div>
     );
   }
