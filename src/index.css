@@ -663,5 +663,77 @@ svg {
   }
 }
 
+/* Header Responsive Layouts */
+.desktop-header-row {
+  display: flex !important;
+}
+.mobile-header-layout {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .desktop-header-row {
+    display: none !important;
+  }
+  .mobile-header-layout {
+    display: flex !important;
+  }
+  .sub-header-nav {
+    display: none !important;
+  }
+}
+
+/* Modals global grid stacking on mobile viewports */
+@media (max-width: 768px) {
+  .glass div[style*="grid-template-columns"],
+  .glass form[style*="grid-template-columns"],
+  .glass-card div[style*="grid-template-columns"],
+  .glass-card form[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+  .glass-card div[style*="display: flex"],
+  .glass div[style*="display: flex"] {
+    flex-wrap: wrap !important;
+  }
+}
+
+/* Breakpoint-specific spacing tweaks */
+@media (max-width: 320px) {
+  .container {
+    padding: 0 8px !important;
+  }
+  .glass-card {
+    padding: 10px !important;
+  }
+  body {
+    font-size: 13px !important;
+  }
+}
+
+@media (max-width: 375px) {
+  .container {
+    padding: 0 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 12px !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .catalog-layout {
+    gap: 16px !important;
+  }
+}
+
+/* General root selector fail-safes */
+#root {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+
 
 

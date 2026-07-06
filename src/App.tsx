@@ -167,10 +167,13 @@ export const App: React.FC = () => {
     };
   }, [isMobileFilterOpen, isMobileSortOpen]);
 
-  // Close mobile overlays on navigation
+  // Close mobile overlays and handle cart route on navigation
   useEffect(() => {
     setIsMobileFilterOpen(false);
     setIsMobileSortOpen(false);
+    if (currentRoute === 'cart') {
+      setIsCartOpen(true);
+    }
   }, [currentRoute]);
 
   // Touch handlers for swipe to close on filter drawer
@@ -981,9 +984,20 @@ export const App: React.FC = () => {
     );
   };
 
+  const handleCartClose = () => {
+    setIsCartOpen(false);
+    if (currentRoute === 'cart') {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        navigateTo('home');
+      }
+    }
+  };
+
   // Router Layout resolution
   const renderRoute = () => {
-    if (currentRoute === 'home' || currentRoute.startsWith('filter')) {
+    if (currentRoute === 'home' || currentRoute.startsWith('filter') || currentRoute === 'cart') {
       const instagramDevices = devices.filter(d => d.seenOnInstagram && d.status !== 'archived');
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
@@ -1068,7 +1082,7 @@ export const App: React.FC = () => {
           {/* Customer Trust Section */}
           <div className="glass-card" style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
             gap: '20px',
             padding: '24px 30px',
             borderRadius: '20px',
@@ -1091,7 +1105,7 @@ export const App: React.FC = () => {
           {/* Visit Our Store Section */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
             gap: '24px',
             marginTop: '20px',
             borderTop: '1px solid var(--border-color)',
@@ -1162,7 +1176,7 @@ export const App: React.FC = () => {
             gap: '20px',
             flexWrap: 'wrap'
           }}>
-            <div style={{ flex: 1, minWidth: '260px' }}>
+            <div style={{ flex: 1, minWidth: 'min(100%, 260px)' }}>
               <span style={{
                 fontSize: '10px', backgroundColor: 'rgba(37, 211, 102, 0.15)', color: '#128C7E',
                 padding: '3px 10px', borderRadius: '10px', fontWeight: 'bold', textTransform: 'uppercase'
@@ -1211,7 +1225,7 @@ export const App: React.FC = () => {
                 </a>
               </div>
 
-              <div className="grid-responsive" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+              <div className="grid-responsive" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' }}>
                 {instagramDevices.map(d => (
                   <ProductCard key={d.id} device={d} />
                 ))}
@@ -1326,7 +1340,7 @@ export const App: React.FC = () => {
                   <p>No accessories match your chosen filter constraints.</p>
                 </div>
               ) : (
-                <div className="grid-responsive" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+                <div className="grid-responsive" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))' }}>
                   {sortedAccessories.map(acc => {
                     const discountPercent = acc.price > acc.offerPrice ? Math.round(((acc.price - acc.offerPrice) / acc.price) * 100) : 0;
                     return (
@@ -1416,9 +1430,52 @@ export const App: React.FC = () => {
     }
 
     return (
-      <div style={{ padding: '80px 20px', textAlign: 'center' }}>
-        <h2>Page Not Found</h2>
-        <button onClick={() => navigateTo('home')} className="premium-btn btn-primary" style={{ marginTop: '12px' }}>Go Home</button>
+      <div style={{ 
+        padding: '100px 20px', 
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '20px',
+        maxWidth: '500px',
+        margin: '0 auto'
+      }} className="animate-scale-up">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src="/logo.jpg" alt="Logo" style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px solid var(--primary)' }} />
+          <h2 style={{ 
+            fontFamily: 'var(--font-display)', 
+            fontWeight: 800, 
+            fontSize: '24px',
+            background: 'linear-gradient(90deg, var(--primary), var(--accent))',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            margin: 0
+          }}>
+            SRI SAI MOBILES
+          </h2>
+        </div>
+        <div style={{ fontSize: '72px', fontWeight: 800, color: 'var(--primary)', lineHeight: 1 }}>404</div>
+        <h3 style={{ fontSize: '20px', fontWeight: 700, margin: '10px 0 0 0' }}>Page Not Found</h3>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+          Oops! The page you are looking for does not exist, has been removed, or is temporarily unavailable.
+        </p>
+        <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: '10px' }}>
+          <button 
+            onClick={() => navigateTo('home')} 
+            className="premium-btn btn-primary" 
+            style={{ flex: 1, padding: '12px', borderRadius: '12px', fontSize: '13px' }}
+          >
+            Back to Home
+          </button>
+          <button 
+            onClick={() => navigateTo('home')} 
+            className="premium-btn btn-secondary" 
+            style={{ flex: 1, padding: '12px', borderRadius: '12px', fontSize: '13px' }}
+          >
+            Continue Shopping
+          </button>
+        </div>
       </div>
     );
   };
@@ -1507,8 +1564,8 @@ export const App: React.FC = () => {
 
       {/* 4. Overlay Modals Manager */}
       <CartDrawer 
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
+        isOpen={isCartOpen || currentRoute === 'cart'}
+        onClose={handleCartClose}
         onOpenLogin={() => { setIsCartOpen(false); setIsLoginOpen(true); }}
         onOpenAddress={() => { setIsCartOpen(false); setIsAddressOpen(true); }}
       />

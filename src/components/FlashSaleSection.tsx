@@ -49,8 +49,7 @@ const FlashSaleCard: React.FC<FlashSaleCardProps> = ({ sale, device }) => {
 
   const handleBuyNow = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addToCart(device.id, device.colors[0]);
-    navigateTo('cart');
+    navigateTo(`product/${device.id}`);
   };
 
   return (
@@ -123,6 +122,7 @@ const FlashSaleCard: React.FC<FlashSaleCardProps> = ({ sale, device }) => {
           alt={device.modelName} 
           style={{
             height: '100%',
+            maxWidth: '100%',
             objectFit: 'contain',
             transition: 'transform 0.3s ease'
           }}

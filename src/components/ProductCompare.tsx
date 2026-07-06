@@ -77,9 +77,8 @@ export const ProductCompare: React.FC<ProductCompareProps> = ({ isOpen, onClose 
   };
 
   const handleQuickBuy = (deviceId: string, color: string) => {
-    addToCart(deviceId, color);
     onClose();
-    navigateTo('cart');
+    navigateTo(`product/${deviceId}`);
   };
 
   return (
