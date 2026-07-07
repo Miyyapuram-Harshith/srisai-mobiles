@@ -1,15 +1,104 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Accessory } from '../types';
+import { supabase, mapAccessoryToDbAccessory } from '../lib/supabase';
 import { 
   Plus, Edit2, Copy, Trash2, X, Tag, AlertTriangle, 
   Layers, Save, CheckSquare, Square, Eye, EyeOff, Upload, Search, Laptop, Smartphone
 } from 'lucide-react';
 
 export const AccessoryManager: React.FC = () => {
-  const { accessories, saveAccessory, deleteAccessory } = useApp();
+  const { accessories, showToast, registerUnsavedChanges, refetchAccessories } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAccessory, setEditingAccessory] = useState<Accessory | null>(null);
+
+  // Buffer and Edit states
+  const [localAccessories, setLocalAccessories] = useState<Accessory[]>([]);
+  const [deletedAccessoryIds, setDeletedAccessoryIds] = useState<string[]>([]);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Sync with context accessories
+  React.useEffect(() => {
+    if (saveStatus !== 'unsaved' && saveStatus !== 'saving') {
+      setLocalAccessories(accessories);
+      setDeletedAccessoryIds([]);
+    }
+  }, [accessories, saveStatus]);
+
+  // Check for unsaved changes
+  React.useEffect(() => {
+    const hasDiff = JSON.stringify(localAccessories) !== JSON.stringify(accessories)
+      || deletedAccessoryIds.length > 0;
+      
+    if (hasDiff) {
+      setSaveStatus('unsaved');
+      registerUnsavedChanges('accessories', true);
+    } else {
+      setSaveStatus('idle');
+      registerUnsavedChanges('accessories', false);
+    }
+  }, [localAccessories, deletedAccessoryIds, accessories]);
+
+  // Unmount protection
+  React.useEffect(() => {
+    return () => {
+      registerUnsavedChanges('accessories', false);
+    };
+  }, []);
+
+  const handleDelete = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this accessory?")) {
+      setLocalAccessories(prev => prev.filter(a => a.id !== id));
+      if (accessories.some(a => a.id === id)) {
+        setDeletedAccessoryIds(prev => [...prev, id]);
+      }
+      showToast("Accessory removed locally", "info");
+    }
+  };
+
+  const handleDiscard = () => {
+    setLocalAccessories(accessories);
+    setDeletedAccessoryIds([]);
+    setSaveStatus('idle');
+    registerUnsavedChanges('accessories', false);
+    showToast("Changes discarded", "info");
+  };
+
+  const handleSaveChanges = async () => {
+    setSaveStatus('saving');
+    try {
+      // 1. Delete removed accessories from Supabase
+      for (const id of deletedAccessoryIds) {
+        const { error } = await supabase.from('accessories').delete().eq('id', id);
+        if (error) throw error;
+      }
+      
+      // 2. Save/insert/update local accessories
+      for (const a of localAccessories) {
+        const dbAcc = mapAccessoryToDbAccessory(a);
+        dbAcc.status = a.stockCount > 0 ? 'available' : 'out_of_stock';
+        
+        const exists = accessories.some(x => x.id === a.id);
+        if (!exists || a.id.includes('-temp-') || a.id.startsWith('acc-temp-')) {
+          const { error } = await supabase.from('accessories').insert(dbAcc);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('accessories').update(dbAcc).eq('id', a.id);
+          if (error) throw error;
+        }
+      }
+      
+      await refetchAccessories();
+      setSaveStatus('saved');
+      registerUnsavedChanges('accessories', false);
+      showToast("Accessories saved successfully!", "success");
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (err: any) {
+      console.error("Failed to save accessories:", err);
+      setSaveStatus('error');
+      showToast("Failed to save accessories: " + err.message, "error");
+    }
+  };
 
   // Form States
   const [category, setCategory] = useState<Accessory['category']>('cases');
@@ -181,8 +270,9 @@ export const AccessoryManager: React.FC = () => {
     if (spec2Key.trim() && spec2Value.trim()) specifications[spec2Key.trim()] = spec2Value.trim();
     if (spec3Key.trim() && spec3Value.trim()) specifications[spec3Key.trim()] = spec3Value.trim();
 
-    const finalAccessory = {
-      id: editingAccessory?.id,
+    const id = editingAccessory?.id || `acc-temp-${Date.now()}`;
+    const finalAccessory: Accessory = {
+      id,
       category,
       brand: brand.trim(),
       name: name.trim(),
@@ -194,21 +284,22 @@ export const AccessoryManager: React.FC = () => {
       images: images.length > 0 ? images : ['logo.jpg'],
       status: Number(stockCount) === 0 ? ('out_of_stock' as const) : status,
       specifications,
-      features
+      features,
+      views: editingAccessory?.views || 0,
+      sales: editingAccessory?.sales || 0,
+      createdAt: editingAccessory?.createdAt || new Date().toISOString()
     };
 
-    saveAccessory(finalAccessory);
+    if (editingAccessory) {
+      setLocalAccessories(prev => prev.map(a => a.id === editingAccessory.id ? finalAccessory : a));
+    } else {
+      setLocalAccessories(prev => [...prev, finalAccessory]);
+    }
     setIsModalOpen(false);
     resetForm();
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to permanently delete this accessory entry?')) {
-      deleteAccessory(id);
-    }
-  };
-
-  const filteredAccessories = accessories.filter(acc => {
+  const filteredAccessories = localAccessories.filter(acc => {
     const matchesSearch = 
       acc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       acc.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -240,6 +331,62 @@ export const AccessoryManager: React.FC = () => {
           <span>Add Accessory</span>
         </button>
       </div>
+
+      {/* Floating Save Changes Bar */}
+      {saveStatus !== 'idle' && (
+        <div style={{
+          position: 'sticky',
+          top: '10px',
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px 24px',
+          borderRadius: '16px',
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          border: '1px solid var(--border-color)',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+          marginBottom: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: saveStatus === 'unsaved' ? '#f59e0b' : (saveStatus === 'saving' ? '#3b82f6' : (saveStatus === 'saved' ? '#10b981' : '#ef4444')),
+              boxShadow: `0 0 10px ${saveStatus === 'unsaved' ? '#f59e0b' : (saveStatus === 'saving' ? '#3b82f6' : (saveStatus === 'saved' ? '#10b981' : '#ef4444'))}`
+            }} />
+            <span style={{ fontSize: '13px', fontWeight: 600 }}>
+              {saveStatus === 'unsaved' && "You have unsaved changes"}
+              {saveStatus === 'saving' && "Saving changes to Supabase..."}
+              {saveStatus === 'saved' && "Changes saved successfully!"}
+              {saveStatus === 'error' && "Failed to save changes. Please check RLS permissions."}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              type="button"
+              onClick={handleDiscard}
+              className="premium-btn btn-secondary"
+              style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '12px' }}
+              disabled={saveStatus === 'saving'}
+            >
+              Discard Changes
+            </button>
+            <button 
+              type="button"
+              onClick={handleSaveChanges}
+              className="premium-btn btn-primary"
+              style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '12px', minWidth: '120px' }}
+              disabled={saveStatus !== 'unsaved'}
+            >
+              {saveStatus === 'saving' ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Toolbar Filter & Search */}
       <div className="glass-card" style={{ padding: '16px', borderRadius: '16px', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>

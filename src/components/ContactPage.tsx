@@ -21,7 +21,7 @@ const Instagram: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ s
 import { useApp } from '../context/AppContext';
 
 export const ContactPage: React.FC = () => {
-  const { whatsAppSettings } = useApp();
+  const { whatsAppSettings, storeSettings } = useApp();
   const [distance, setDistance] = useState<number | null>(null);
   const [locPermission, setLocPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
 
@@ -103,7 +103,7 @@ export const ContactPage: React.FC = () => {
               fontWeight: 600
             }}>
               <Compass size={18} className="animate-spin-slow" />
-              <span>You are currently {distance} km away from our showroom in Jagtial!</span>
+              <span>You are currently {distance} km away from {storeSettings.storeName}!</span>
             </div>
           )}
 
@@ -119,8 +119,7 @@ export const ContactPage: React.FC = () => {
             <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '12px' }}>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Shop Landmark</span>
               <p style={{ fontSize: '13px', color: 'var(--text-main)', margin: 0, lineHeight: 1.4 }}>
-                Noor Masjid, Yawar Road, Jagtial,<br />
-                Telangana - 505327
+                {storeSettings.storeAddress}
               </p>
             </div>
 
@@ -176,7 +175,7 @@ export const ContactPage: React.FC = () => {
             {/* Quick Actions call */}
             <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <a
-                href="tel:+918688303048"
+                href={`tel:${storeSettings.storePhone}`}
                 className="premium-btn btn-primary"
                 style={{
                   width: '100%', padding: '12px', borderRadius: '12px', display: 'flex',
@@ -184,11 +183,11 @@ export const ContactPage: React.FC = () => {
                 }}
               >
                 <Phone size={16} />
-                <span>Call Now: +91 8688303048</span>
+                <span>Call Now: {storeSettings.storePhone}</span>
               </a>
 
               <a
-                href={`https://api.whatsapp.com/send?phone=918688303048&text=${encodeURIComponent("Hello Sri Sai Mobiles, I need assistance regarding your phones.")}`}
+                href={`https://api.whatsapp.com/send?phone=${storeSettings.whatsappNumber}&text=${encodeURIComponent(storeSettings.defaultGreeting)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn btn-secondary"

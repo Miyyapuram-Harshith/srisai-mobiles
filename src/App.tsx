@@ -42,7 +42,7 @@ export const App: React.FC = () => {
     bypassDbConnection,
     currentRoute, devices, accessories, wishlist, navigateTo, theme,
     instagramPosts, instagramSettings, trackInstagramPostView, trackInstagramPostClick,
-    addToCart, toggleWishlist
+    addToCart, toggleWishlist, storeSettings
   } = useApp();
 
   // Modal States
@@ -527,21 +527,21 @@ export const App: React.FC = () => {
   useEffect(() => {
     // 1. Update document title
     if (currentRoute === 'home') {
-      document.title = "Sri Sai Mobiles | Buy Sell Exchange Mobiles in Jagtial";
+      document.title = `${storeSettings.storeName} | Buy Sell Exchange Mobiles`;
     } else if (currentRoute === 'accessories' || currentRoute.startsWith('accessories')) {
-      document.title = "Accessories Store | Sri Sai Mobiles Jagtial";
+      document.title = `Accessories Store | ${storeSettings.storeName}`;
     } else if (currentRoute === 'contact') {
-      document.title = "Contact Us | Sri Sai Mobiles Jagtial";
+      document.title = `Contact Us | ${storeSettings.storeName}`;
     } else if (currentRoute === 'wishlist') {
-      document.title = "Your Wishlist | Sri Sai Mobiles";
+      document.title = `Your Wishlist | ${storeSettings.storeName}`;
     } else if (currentRoute === 'cart') {
-      document.title = "Shopping Cart | Sri Sai Mobiles";
+      document.title = `Shopping Cart | ${storeSettings.storeName}`;
     } else if (currentRoute.startsWith('product/')) {
       const parts = currentRoute.split('/');
       const id = parts[1];
       const d = devices.find(x => x.id === id);
       if (d) {
-        document.title = `${d.brand} ${d.modelName} (${d.variant}) | Sri Sai Mobiles`;
+        document.title = `${d.brand} ${d.modelName} (${d.variant}) | ${storeSettings.storeName}`;
       }
     }
 
@@ -552,7 +552,7 @@ export const App: React.FC = () => {
       metaDesc.setAttribute('name', 'description');
       document.head.appendChild(metaDesc);
     }
-    metaDesc.setAttribute('content', 'Buy new mobiles, used phones, exchange devices, and accessories at Sri Sai Mobiles, Jagtial. Best prices, trusted service, and premium customer experience.');
+    metaDesc.setAttribute('content', `Buy new mobiles, used phones, exchange devices, and accessories at ${storeSettings.storeName}. Best prices, trusted service, and premium customer experience.`);
 
     // 3. Inject Local Business Schema JSON-LD
     let schemaScript = document.getElementById('srisai-localbusiness-schema');
@@ -566,18 +566,15 @@ export const App: React.FC = () => {
     const schemaData = {
       "@context": "https://schema.org",
       "@type": "MobilePhoneStore",
-      "name": "Sri Sai Mobiles",
+      "name": storeSettings.storeName,
       "image": window.location.origin + "/logo.jpg",
       "@id": window.location.origin + "/#localbusiness",
       "url": window.location.origin,
-      "telephone": "+91 8688303048",
+      "telephone": storeSettings.storePhone,
       "priceRange": "₹₹",
       "address": {
         "@type": "PostalAddress",
-        "streetAddress": "Opposite Big C, Angadi Bazar",
-        "addressLocality": "Jagtial",
-        "addressRegion": "Telangana",
-        "postalCode": "505327",
+        "streetAddress": storeSettings.storeAddress,
         "addressCountry": "IN"
       },
       "geo": {
@@ -1121,9 +1118,8 @@ export const App: React.FC = () => {
                 <span>Visit Our Showroom</span>
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-main)', lineHeight: 1.4, margin: 0 }}>
-                <strong>Sri Sai Mobiles</strong><br />
-                Opposite Big C, Angadi Bazar, Jagtial,<br />
-                Telangana - 505327, India
+                <strong>{storeSettings.storeName}</strong><br />
+                {storeSettings.storeAddress}
               </p>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                 🕒 Mon-Sat: 10:00 AM - 09:00 PM | Sunday: Closed
@@ -1140,7 +1136,7 @@ export const App: React.FC = () => {
                   <span>Get Directions</span>
                 </a>
                 <a 
-                  href="tel:+918688303048"
+                  href={`tel:${storeSettings.storePhone}`}
                   className="premium-btn btn-secondary"
                   style={{ flex: '1 1 120px', fontSize: '12px', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >

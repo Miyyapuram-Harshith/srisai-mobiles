@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { InstagramPost, InstagramSettings } from '../types';
+import { supabase } from '../lib/supabase';
 import { 
   Plus, Trash2, Edit, Eye, EyeOff, Star, ExternalLink, 
   Image, GripVertical, Camera, X, Check, Upload,
@@ -37,8 +38,7 @@ const positionLabels: Record<InstagramPost['position'], string> = {
 
 export const InstagramManager: React.FC = () => {
   const { 
-    instagramPosts, addInstagramPost, updateInstagramPost, deleteInstagramPost, reorderInstagramPosts,
-    instagramSettings, updateInstagramSettings 
+    instagramPosts, instagramSettings, showToast, registerUnsavedChanges, refetchInstagram, refetchSettings
   } = useApp();
 
   const [showForm, setShowForm] = useState(false);
@@ -69,11 +69,70 @@ export const InstagramManager: React.FC = () => {
   const [showFollowButton, setShowFollowButton] = useState(instagramSettings.showFollowButton);
   const [showSectionTitle, setShowSectionTitle] = useState(instagramSettings.showSectionTitle);
 
+  // Buffer states
+  const [localPosts, setLocalPosts] = useState<InstagramPost[]>([]);
+  const [deletedPostIds, setDeletedPostIds] = useState<string[]>([]);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved' | 'error'>('idle');
+
   // Check broken images
   const [brokenPosts, setBrokenPosts] = useState<string[]>([]);
 
+  // Sync with context on load / save success
   useEffect(() => {
-    instagramPosts.forEach(post => {
+    if (saveStatus !== 'unsaved' && saveStatus !== 'saving') {
+      setLocalPosts(instagramPosts);
+      setDeletedPostIds([]);
+      setShowSection(instagramSettings.showSection);
+      setSectionTitle(instagramSettings.sectionTitle);
+      setSectionSubtitle(instagramSettings.sectionSubtitle);
+      setPostsCount(instagramSettings.postsCount);
+      setLayout(instagramSettings.layout);
+      setAutoSlide(instagramSettings.autoSlide);
+      setAutoSlideInterval(instagramSettings.autoSlideInterval);
+      setShowFollowButton(instagramSettings.showFollowButton);
+      setShowSectionTitle(instagramSettings.showSectionTitle);
+    }
+  }, [instagramPosts, instagramSettings, saveStatus]);
+
+  // Settings object helper for diffing
+  const currentSettingsObj = {
+    showSection,
+    sectionTitle,
+    sectionSubtitle,
+    postsCount: Number(postsCount),
+    layout,
+    autoSlide,
+    autoSlideInterval: Number(autoSlideInterval),
+    showFollowButton,
+    showSectionTitle,
+    followHandle: instagramSettings.followHandle,
+    followersCount: instagramSettings.followersCount
+  };
+
+  // Check for unsaved changes
+  useEffect(() => {
+    const postsDiff = JSON.stringify(localPosts) !== JSON.stringify(instagramPosts)
+      || deletedPostIds.length > 0;
+    const settingsDiff = JSON.stringify(currentSettingsObj) !== JSON.stringify(instagramSettings);
+    
+    if (postsDiff || settingsDiff) {
+      setSaveStatus('unsaved');
+      registerUnsavedChanges('instagram', true);
+    } else {
+      setSaveStatus('idle');
+      registerUnsavedChanges('instagram', false);
+    }
+  }, [localPosts, deletedPostIds, showSection, sectionTitle, sectionSubtitle, postsCount, layout, autoSlide, autoSlideInterval, showFollowButton, showSectionTitle, instagramPosts, instagramSettings]);
+
+  // Unmount protection
+  useEffect(() => {
+    return () => {
+      registerUnsavedChanges('instagram', false);
+    };
+  }, []);
+
+  useEffect(() => {
+    localPosts.forEach(post => {
       const img = new window.Image();
       img.onload = () => {};
       img.onerror = () => {
@@ -81,15 +140,15 @@ export const InstagramManager: React.FC = () => {
       };
       img.src = post.thumbnailUrl;
     });
-  }, [instagramPosts]);
+  }, [localPosts]);
 
-  const sortedPosts = [...instagramPosts].sort((a, b) => a.displayOrder - b.displayOrder);
+  const sortedPosts = [...localPosts].sort((a, b) => a.displayOrder - b.displayOrder);
 
   const resetForm = () => {
     setFormUrl('');
     setFormTitle('');
     setFormDescription('');
-    setFormDisplayOrder(instagramPosts.length + 1);
+    setFormDisplayOrder(localPosts.length + 1);
     setFormFeatured(false);
     setFormActive(true);
     setFormThumbnail('');
@@ -102,7 +161,7 @@ export const InstagramManager: React.FC = () => {
 
   const openAddForm = () => {
     resetForm();
-    setFormDisplayOrder(instagramPosts.length + 1);
+    setFormDisplayOrder(localPosts.length + 1);
     setShowForm(true);
   };
 
@@ -172,7 +231,9 @@ export const InstagramManager: React.FC = () => {
       return;
     }
 
+    const id = editingPost?.id || `ig-temp-${Date.now()}`;
     const postData = {
+      id,
       url: formUrl.trim(),
       type: formType,
       thumbnailUrl: formThumbnail,
@@ -182,13 +243,16 @@ export const InstagramManager: React.FC = () => {
       isFeatured: formFeatured,
       isActive: formActive,
       position: formPosition,
-      expiryDate: formExpiryDate ? new Date(formExpiryDate).toISOString() : undefined
+      expiryDate: formExpiryDate ? new Date(formExpiryDate).toISOString() : undefined,
+      views: editingPost?.views || 0,
+      clicks: editingPost?.clicks || 0,
+      createdAt: editingPost?.createdAt || new Date().toISOString()
     };
 
     if (editingPost) {
-      updateInstagramPost(editingPost.id, postData);
+      setLocalPosts(prev => prev.map(p => p.id === editingPost.id ? postData : p));
     } else {
-      addInstagramPost(postData);
+      setLocalPosts(prev => [...prev, postData]);
     }
 
     setShowForm(false);
@@ -197,7 +261,11 @@ export const InstagramManager: React.FC = () => {
 
   const handleDelete = (id: string) => {
     if (window.confirm('Are you sure you want to delete this Instagram post?')) {
-      deleteInstagramPost(id);
+      setLocalPosts(prev => prev.filter(p => p.id !== id));
+      if (!id.startsWith('ig-temp-') && instagramPosts.some(p => p.id === id)) {
+        setDeletedPostIds(prev => [...prev, id]);
+      }
+      showToast("Post removed locally", "info");
     }
   };
 
@@ -211,30 +279,90 @@ export const InstagramManager: React.FC = () => {
     list[targetIndex] = temp;
 
     const reordered = list.map((p, i) => ({ ...p, displayOrder: i + 1 }));
-    reorderInstagramPosts(reordered);
+    setLocalPosts(reordered);
   };
 
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    updateInstagramSettings({
-      showSection,
-      sectionTitle,
-      sectionSubtitle,
-      postsCount: Number(postsCount),
-      layout,
-      autoSlide,
-      autoSlideInterval: Number(autoSlideInterval),
-      showFollowButton,
-      showSectionTitle
-    });
-    alert('Instagram display settings saved successfully!');
+    showToast("Settings buffered locally, click Save Changes at the top to save to database", "info");
+  };
+
+  const handleDiscard = () => {
+    setLocalPosts(instagramPosts);
+    setDeletedPostIds([]);
+    setShowSection(instagramSettings.showSection);
+    setSectionTitle(instagramSettings.sectionTitle);
+    setSectionSubtitle(instagramSettings.sectionSubtitle);
+    setPostsCount(instagramSettings.postsCount);
+    setLayout(instagramSettings.layout);
+    setAutoSlide(instagramSettings.autoSlide);
+    setAutoSlideInterval(instagramSettings.autoSlideInterval);
+    setShowFollowButton(instagramSettings.showFollowButton);
+    setShowSectionTitle(instagramSettings.showSectionTitle);
+    
+    setSaveStatus('idle');
+    registerUnsavedChanges('instagram', false);
+    showToast("Changes discarded", "info");
+  };
+
+  const handleSaveChanges = async () => {
+    setSaveStatus('saving');
+    try {
+      const { data: sData } = await supabase.from('settings').select('*');
+      const storeInfo = sData?.[0] || {};
+      const { error: sError } = await supabase.from('settings').update({
+        instagram_settings: currentSettingsObj
+      }).eq('id', storeInfo.id || 'ac000000-0000-0000-0000-000000000001');
+      if (sError) throw sError;
+
+      for (const id of deletedPostIds) {
+        const { error } = await supabase.from('instagram_posts').delete().eq('id', id);
+        if (error) throw error;
+      }
+
+      for (const p of localPosts) {
+        const dbPost = {
+          url: p.url,
+          type: p.type,
+          thumbnail_url: p.thumbnailUrl,
+          custom_title: p.customTitle || null,
+          custom_description: p.customDescription || null,
+          display_order: p.displayOrder,
+          is_featured: p.isFeatured,
+          is_active: p.isActive,
+          position: p.position || 'middle',
+          expiry_date: p.expiryDate || null,
+          views: p.views || 0,
+          clicks: p.clicks || 0
+        };
+        
+        if (p.id.startsWith('ig-temp-')) {
+          const { error } = await supabase.from('instagram_posts').insert(dbPost);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('instagram_posts').update(dbPost).eq('id', p.id);
+          if (error) throw error;
+        }
+      }
+
+      await refetchInstagram();
+      await refetchSettings();
+      setSaveStatus('saved');
+      registerUnsavedChanges('instagram', false);
+      showToast("Instagram configuration saved successfully!", "success");
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (err: any) {
+      console.error("Failed to save Instagram:", err);
+      setSaveStatus('error');
+      showToast("Failed to save Instagram: " + err.message, "error");
+    }
   };
 
   // Analytics Helpers
-  const totalViews = instagramPosts.reduce((acc, p) => acc + (p.views || 0), 0);
-  const totalClicks = instagramPosts.reduce((acc, p) => acc + (p.clicks || 0), 0);
-  const sortedByViews = [...instagramPosts].sort((a, b) => (b.views || 0) - (a.views || 0));
-  const sortedByClicks = [...instagramPosts].sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
+  const totalViews = localPosts.reduce((acc, p) => acc + (p.views || 0), 0);
+  const totalClicks = localPosts.reduce((acc, p) => acc + (p.clicks || 0), 0);
+  const sortedByViews = [...localPosts].sort((a, b) => (b.views || 0) - (a.views || 0));
+  const sortedByClicks = [...localPosts].sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -258,7 +386,7 @@ export const InstagramManager: React.FC = () => {
             style={{ borderRadius: '8px', fontSize: '12px', padding: '8px 14px' }}
           >
             <Camera size={14} style={{ marginRight: '6px' }} />
-            Posts Feed ({instagramPosts.length})
+            Posts Feed ({localPosts.length})
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -278,6 +406,62 @@ export const InstagramManager: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Floating Save Changes Bar */}
+      {saveStatus !== 'idle' && (
+        <div style={{
+          position: 'sticky',
+          top: '10px',
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px 24px',
+          borderRadius: '16px',
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          border: '1px solid var(--border-color)',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+          marginBottom: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: saveStatus === 'unsaved' ? '#f59e0b' : (saveStatus === 'saving' ? '#3b82f6' : (saveStatus === 'saved' ? '#10b981' : '#ef4444')),
+              boxShadow: `0 0 10px ${saveStatus === 'unsaved' ? '#f59e0b' : (saveStatus === 'saving' ? '#3b82f6' : (saveStatus === 'saved' ? '#10b981' : '#ef4444'))}`
+            }} />
+            <span style={{ fontSize: '13px', fontWeight: 600 }}>
+              {saveStatus === 'unsaved' && "You have unsaved changes"}
+              {saveStatus === 'saving' && "Saving changes to Supabase..."}
+              {saveStatus === 'saved' && "Changes saved successfully!"}
+              {saveStatus === 'error' && "Failed to save changes. Please check RLS permissions."}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              type="button"
+              onClick={handleDiscard}
+              className="premium-btn btn-secondary"
+              style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '12px' }}
+              disabled={saveStatus === 'saving'}
+            >
+              Discard Changes
+            </button>
+            <button 
+              type="button"
+              onClick={handleSaveChanges}
+              className="premium-btn btn-primary"
+              style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '12px', minWidth: '120px' }}
+              disabled={saveStatus !== 'unsaved'}
+            >
+              {saveStatus === 'saving' ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {activeTab === 'posts' && (
         <>
@@ -653,7 +837,10 @@ export const InstagramManager: React.FC = () => {
                     {/* Actions */}
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                       <button
-                        onClick={() => updateInstagramPost(post.id, { isActive: !post.isActive })}
+                        onClick={() => {
+                          setLocalPosts(prev => prev.map(p => p.id === post.id ? { ...p, isActive: !p.isActive } : p));
+                          showToast(`Post ${post.isActive ? 'deactivated' : 'activated'} locally`, "info");
+                        }}
                         title={post.isActive ? 'Deactivate' : 'Activate'}
                         style={{
                           border: 'none', background: 'var(--bg-subtle)',

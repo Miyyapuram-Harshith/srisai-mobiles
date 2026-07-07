@@ -1,15 +1,123 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Device, Specifications, DeviceType } from '../types';
+import { supabase, mapDeviceToDbProduct } from '../lib/supabase';
 import { 
   Plus, Edit2, Copy, Archive, Trash2, X, 
   Smartphone, Tag, AlertTriangle, Layers, Save, CheckSquare, Square 
 } from 'lucide-react';
 
 export const DeviceManager: React.FC = () => {
-  const { devices, saveDevice, duplicateDevice, archiveDevice, deleteDevice } = useApp();
+  const { devices, showToast, registerUnsavedChanges, refetchProducts } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+
+  // Buffer and Edit states
+  const [localDevices, setLocalDevices] = useState<Device[]>([]);
+  const [deletedDeviceIds, setDeletedDeviceIds] = useState<string[]>([]);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Sync with context devices
+  React.useEffect(() => {
+    if (saveStatus !== 'unsaved' && saveStatus !== 'saving') {
+      setLocalDevices(devices);
+      setDeletedDeviceIds([]);
+    }
+  }, [devices, saveStatus]);
+
+  // Check for unsaved changes
+  React.useEffect(() => {
+    const hasDiff = JSON.stringify(localDevices) !== JSON.stringify(devices)
+      || deletedDeviceIds.length > 0;
+      
+    if (hasDiff) {
+      setSaveStatus('unsaved');
+      registerUnsavedChanges('devices', true);
+    } else {
+      setSaveStatus('idle');
+      registerUnsavedChanges('devices', false);
+    }
+  }, [localDevices, deletedDeviceIds, devices]);
+
+  // Unmount protection
+  React.useEffect(() => {
+    return () => {
+      registerUnsavedChanges('devices', false);
+    };
+  }, []);
+
+  const handleDuplicate = (id: string) => {
+    const source = localDevices.find(d => d.id === id);
+    if (!source) return;
+    const dup: Device = {
+      ...source,
+      id: `${source.id}-copy-${Date.now().toString().slice(-3)}`,
+      modelName: `${source.modelName} (Copy)`,
+      views: 0,
+      sales: 0
+    };
+    setLocalDevices(prev => [...prev, dup]);
+    showToast("Product duplicated locally", "info");
+  };
+
+  const handleArchive = (id: string) => {
+    setLocalDevices(prev => prev.map(d => d.id === id ? { ...d, status: 'archived' } : d));
+    showToast("Product marked archived locally", "info");
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this device catalog entry?")) {
+      setLocalDevices(prev => prev.filter(d => d.id !== id));
+      if (devices.some(d => d.id === id)) {
+        setDeletedDeviceIds(prev => [...prev, id]);
+      }
+      showToast("Product removed locally", "info");
+    }
+  };
+
+  const handleDiscard = () => {
+    setLocalDevices(devices);
+    setDeletedDeviceIds([]);
+    setSaveStatus('idle');
+    registerUnsavedChanges('devices', false);
+    showToast("Changes discarded", "info");
+  };
+
+  const handleSaveChanges = async () => {
+    setSaveStatus('saving');
+    try {
+      // 1. Delete removed devices from Supabase
+      for (const id of deletedDeviceIds) {
+        const { error } = await supabase.from('products').delete().eq('id', id);
+        if (error) throw error;
+      }
+      
+      // 2. Save/insert/update local devices
+      for (const d of localDevices) {
+        const dbProduct = mapDeviceToDbProduct(d);
+        dbProduct.status = d.stockCount > 0 ? (d.status === 'archived' ? 'archived' : 'available') : 'out_of_stock';
+        
+        const exists = devices.some(x => x.id === d.id);
+        if (!exists || d.id.includes('-copy-') || d.id.includes('-temp-')) {
+          const { error } = await supabase.from('products').insert(dbProduct);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('products').update(dbProduct).eq('id', d.id);
+          if (error) throw error;
+        }
+      }
+      
+      await refetchProducts();
+      setSaveStatus('saved');
+      registerUnsavedChanges('devices', false);
+      showToast("Products saved successfully!", "success");
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (err: any) {
+      console.error("Failed to save products:", err);
+      setSaveStatus('error');
+      showToast("Failed to save products: " + err.message, "error");
+    }
+  };
 
   // Core Form States
   const [brand, setBrand] = useState('');
@@ -293,8 +401,9 @@ export const DeviceManager: React.FC = () => {
       warranty
     };
 
-    saveDevice({
-      id: editingDevice?.id,
+    const id = editingDevice?.id || `${brand.toLowerCase()}-${modelName.toLowerCase().replace(/\s+/g, '-')}-${Date.now().toString().slice(-4)}`;
+    const newOrUpdated: Device = {
+      id,
       brand,
       modelName,
       variant,
@@ -317,15 +426,14 @@ export const DeviceManager: React.FC = () => {
       images: imageList,
       videoUrl: videoUrl || undefined,
       status: stockCount > 0 ? (editingDevice?.status === 'archived' ? 'archived' : 'available') : 'out_of_stock',
-
-      // Classification Properties mapping
+      views: editingDevice?.views || 0,
+      sales: editingDevice?.sales || 0,
       deviceType,
       factorySealed,
       officialBrandWarrantyAvailable,
       warrantyDuration,
       launchDate: launchDate || undefined,
       invoiceAvailable,
-
       ownershipDetails,
       usedDuration,
       originalPurchaseDate: originalPurchaseDate || undefined,
@@ -351,26 +459,29 @@ export const DeviceManager: React.FC = () => {
       networkLockStatus,
       repairHistory,
       repairDescription,
-      qualityCheckStatus: deviceType === 'used' ? qualityCheckStatus : undefined,
+      qualityCheckStatus: deviceType === 'used' ? qualityCheckStatus : [],
       sellerNotes,
-
       openBoxBoxAvailable,
       openBoxAccessoriesAvailable,
       openBoxWarrantyRemaining,
       openBoxActivationDate: openBoxActivationDate || undefined,
       openBoxReason,
-
       refurbishedGrade,
       refurbishedPartsReplaced,
       refurbishedDate: refurbishedDate || undefined,
       refurbishedBy,
       refurbishedWarrantyOffered,
-
       demoStoreUsageDuration,
       demoUsageHours,
       demoPhysicalCondition,
       demoWarrantyStatus
-    });
+    };
+
+    if (editingDevice) {
+      setLocalDevices(prev => prev.map(d => d.id === editingDevice.id ? newOrUpdated : d));
+    } else {
+      setLocalDevices(prev => [...prev, newOrUpdated]);
+    }
 
     setIsModalOpen(false);
   };
@@ -405,6 +516,62 @@ export const DeviceManager: React.FC = () => {
         </button>
       </div>
 
+      {/* Floating Save Changes Bar */}
+      {saveStatus !== 'idle' && (
+        <div style={{
+          position: 'sticky',
+          top: '10px',
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px 24px',
+          borderRadius: '16px',
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          border: '1px solid var(--border-color)',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+          marginBottom: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: saveStatus === 'unsaved' ? '#f59e0b' : (saveStatus === 'saving' ? '#3b82f6' : (saveStatus === 'saved' ? '#10b981' : '#ef4444')),
+              boxShadow: `0 0 10px ${saveStatus === 'unsaved' ? '#f59e0b' : (saveStatus === 'saving' ? '#3b82f6' : (saveStatus === 'saved' ? '#10b981' : '#ef4444'))}`
+            }} />
+            <span style={{ fontSize: '13px', fontWeight: 600 }}>
+              {saveStatus === 'unsaved' && "You have unsaved changes"}
+              {saveStatus === 'saving' && "Saving changes to Supabase..."}
+              {saveStatus === 'saved' && "Changes saved successfully!"}
+              {saveStatus === 'error' && "Failed to save changes. Please check RLS permissions."}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              type="button"
+              onClick={handleDiscard}
+              className="premium-btn btn-secondary"
+              style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '12px' }}
+              disabled={saveStatus === 'saving'}
+            >
+              Discard Changes
+            </button>
+            <button 
+              type="button"
+              onClick={handleSaveChanges}
+              className="premium-btn btn-primary"
+              style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '12px', minWidth: '120px' }}
+              disabled={saveStatus !== 'unsaved'}
+            >
+              {saveStatus === 'saving' ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Catalog Table */}
       <div className="glass-card" style={{ padding: '0', overflow: 'hidden', borderRadius: '16px' }}>
         
@@ -433,7 +600,7 @@ export const DeviceManager: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {devices.map(d => (
+              {localDevices.map(d => (
                 <tr 
                   key={d.id} 
                   style={{ 
@@ -487,7 +654,7 @@ export const DeviceManager: React.FC = () => {
                   {/* Status */}
                   <td style={{ padding: '12px 16px' }}>
                     {d.status === 'archived' ? (
-                      <span className="badge" style={{ backgroundColor: 'var(--border-color)', color: 'var(--text-muted)' }}>Archived</span>
+                       <span className="badge" style={{ backgroundColor: 'var(--border-color)', color: 'var(--text-muted)' }}>Archived</span>
                     ) : d.stockCount === 0 ? (
                       <span className="badge badge-out">Out of stock</span>
                     ) : d.stockCount <= 2 ? (
@@ -508,7 +675,7 @@ export const DeviceManager: React.FC = () => {
                         <Edit2 size={13} />
                       </button>
                       <button 
-                        onClick={() => duplicateDevice(d.id)}
+                        onClick={() => handleDuplicate(d.id)}
                         style={{ border: 'none', background: 'var(--bg-subtle)', cursor: 'pointer', padding: '6px', borderRadius: '6px' }}
                         title="Duplicate Device"
                       >
@@ -516,7 +683,7 @@ export const DeviceManager: React.FC = () => {
                       </button>
                       {d.status !== 'archived' && (
                         <button 
-                          onClick={() => archiveDevice(d.id)}
+                          onClick={() => handleArchive(d.id)}
                           style={{ border: 'none', background: 'var(--bg-subtle)', cursor: 'pointer', padding: '6px', borderRadius: '6px' }}
                           title="Archive Device"
                         >
@@ -524,7 +691,7 @@ export const DeviceManager: React.FC = () => {
                         </button>
                       )}
                       <button 
-                        onClick={() => deleteDevice(d.id)}
+                        onClick={() => handleDelete(d.id)}
                         style={{ border: 'none', background: 'rgba(239,68,68,0.1)', color: 'var(--error)', cursor: 'pointer', padding: '6px', borderRadius: '6px' }}
                         title="Delete Device"
                       >
@@ -541,12 +708,12 @@ export const DeviceManager: React.FC = () => {
 
         {/* Mobile View */}
         <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px' }}>
-          {devices.length === 0 ? (
+          {localDevices.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
               No devices found.
             </div>
           ) : (
-            devices.map(d => (
+            localDevices.map(d => (
               <div 
                 key={d.id} 
                 className="glass-card"
@@ -612,7 +779,7 @@ export const DeviceManager: React.FC = () => {
                     Edit
                   </button>
                   <button 
-                    onClick={() => duplicateDevice(d.id)}
+                    onClick={() => handleDuplicate(d.id)}
                     className="premium-btn btn-secondary"
                     style={{ flex: 1, padding: '8px', borderRadius: '8px', fontSize: '12px', minHeight: '36px' }}
                   >
@@ -620,7 +787,7 @@ export const DeviceManager: React.FC = () => {
                   </button>
                   {d.status !== 'archived' && (
                     <button 
-                      onClick={() => archiveDevice(d.id)}
+                      onClick={() => handleArchive(d.id)}
                       className="premium-btn btn-secondary"
                       style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', minHeight: '36px' }}
                       title="Archive"
@@ -629,7 +796,7 @@ export const DeviceManager: React.FC = () => {
                     </button>
                   )}
                   <button 
-                    onClick={() => deleteDevice(d.id)}
+                    onClick={() => handleDelete(d.id)}
                     className="premium-btn btn-secondary"
                     style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', minHeight: '36px', borderColor: 'var(--error)', color: 'var(--error)' }}
                     title="Delete"

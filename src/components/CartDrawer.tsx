@@ -16,7 +16,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 }) => {
   const { 
     cart, devices, accessories, updateCartQty, removeFromCart, selectedAddress, 
-    currentUser, createOrder, navigateTo, addresses, addAddress
+    currentUser, createOrder, navigateTo, addresses, addAddress, storeSettings
   } = useApp();
 
   const [coupon, setCoupon] = useState('');
@@ -237,7 +237,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       fullName: currentUser.name || 'Store Customer',
       phone: currentUser.mobileNumber || '9876543210',
       pincode: '505327',
-      addressLine: 'Store Pickup - Sri Sai Mobiles (Opposite Big C, Angadi Bazar, Jagtial, 505327)',
+      addressLine: `Store Pickup - ${storeSettings.storeName} (${storeSettings.storeAddress})`,
       city: 'Jagitial',
       state: 'Telangana',
       isDefault: false
@@ -759,7 +759,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       </select>
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      ℹ️ A pickup OTP will be generated on placement. Please show the OTP at Sri Sai Mobiles (Opposite Big C, Angadi Bazar, Jagtial) to collect your order.
+                      ℹ️ A pickup OTP will be generated on placement. Please show the OTP at {storeSettings.storeName} ({storeSettings.storeAddress}) to collect your order.
                     </div>
                   </div>
 

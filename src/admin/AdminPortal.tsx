@@ -18,11 +18,25 @@ import {
 } from 'lucide-react';
 
 export const AdminPortal: React.FC = () => {
-  const { currentUser, navigateTo, notifications, orders, adminRole, setAdminRole } = useApp();
+  const { currentUser, navigateTo, notifications, orders, adminRole, setAdminRole, hasAnyUnsavedChanges, showToast } = useApp();
   const [activeSubRoute, setActiveSubRoute] = useState<'dashboard' | 'devices' | 'banners' | 'sales' | 'admins' | 'notifications' | 'orders' | 'communications' | 'instagram' | 'accessories' | 'audit_logs'>('dashboard');
   const [ordersFilter, setOrdersFilter] = useState<string>('all');
   const [ordersMenuExpanded, setOrdersMenuExpanded] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const handleSubRouteSwitch = (route: typeof activeSubRoute, orderFilterVal?: string) => {
+    if (hasAnyUnsavedChanges) {
+      if (window.confirm("You have unsaved changes in the admin panel. Switching tabs will discard them. Are you sure you want to proceed?")) {
+        setActiveSubRoute(route);
+        if (orderFilterVal !== undefined) setOrdersFilter(orderFilterVal);
+      } else {
+        showToast("Tab switch cancelled. Save your changes first.", "info");
+      }
+    } else {
+      setActiveSubRoute(route);
+      if (orderFilterVal !== undefined) setOrdersFilter(orderFilterVal);
+    }
+  };
 
   // Security Verification: Lock out non-admins
   useEffect(() => {
@@ -172,7 +186,7 @@ export const AdminPortal: React.FC = () => {
         <nav style={{ padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
           
           <button
-            onClick={() => setActiveSubRoute('dashboard')}
+            onClick={() => handleSubRouteSwitch('dashboard')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -197,7 +211,7 @@ export const AdminPortal: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <button
               onClick={() => {
-                setActiveSubRoute('orders');
+                handleSubRouteSwitch('orders');
                 setOrdersMenuExpanded(!ordersMenuExpanded);
               }}
               style={{
@@ -240,8 +254,7 @@ export const AdminPortal: React.FC = () => {
                     <button
                       key={sub.key}
                       onClick={() => {
-                        setActiveSubRoute('orders');
-                        setOrdersFilter(sub.key);
+                        handleSubRouteSwitch('orders', sub.key);
                       }}
                       style={{
                         display: 'flex',
@@ -280,7 +293,7 @@ export const AdminPortal: React.FC = () => {
           {/* Manage Devices */}
           {(adminRole === 'super_admin' || adminRole === 'manager') && (
             <button
-              onClick={() => setActiveSubRoute('devices')}
+              onClick={() => handleSubRouteSwitch('devices')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -305,7 +318,7 @@ export const AdminPortal: React.FC = () => {
           {/* Accessories */}
           {(adminRole === 'super_admin' || adminRole === 'manager') && (
             <button
-              onClick={() => setActiveSubRoute('accessories')}
+              onClick={() => handleSubRouteSwitch('accessories')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -330,7 +343,7 @@ export const AdminPortal: React.FC = () => {
           {/* Banners */}
           {(adminRole === 'super_admin' || adminRole === 'manager') && (
             <button
-              onClick={() => setActiveSubRoute('banners')}
+              onClick={() => handleSubRouteSwitch('banners')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -355,7 +368,7 @@ export const AdminPortal: React.FC = () => {
           {/* Flash Sales */}
           {(adminRole === 'super_admin' || adminRole === 'manager') && (
             <button
-              onClick={() => setActiveSubRoute('sales')}
+              onClick={() => handleSubRouteSwitch('sales')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -380,7 +393,7 @@ export const AdminPortal: React.FC = () => {
           {/* Manage Admins */}
           {adminRole === 'super_admin' && (
             <button
-              onClick={() => setActiveSubRoute('admins')}
+              onClick={() => handleSubRouteSwitch('admins')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -405,7 +418,7 @@ export const AdminPortal: React.FC = () => {
           {/* Audit Logs */}
           {adminRole === 'super_admin' && (
             <button
-              onClick={() => setActiveSubRoute('audit_logs')}
+              onClick={() => handleSubRouteSwitch('audit_logs')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -430,7 +443,7 @@ export const AdminPortal: React.FC = () => {
           {/* Alerts Notifications */}
           {(adminRole === 'super_admin' || adminRole === 'manager' || adminRole === 'sales_staff') && (
             <button
-              onClick={() => setActiveSubRoute('notifications')}
+              onClick={() => handleSubRouteSwitch('notifications')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -469,7 +482,7 @@ export const AdminPortal: React.FC = () => {
           {/* Comm Settings */}
           {(adminRole === 'super_admin' || adminRole === 'manager') && (
             <button
-              onClick={() => setActiveSubRoute('communications')}
+              onClick={() => handleSubRouteSwitch('communications')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -494,7 +507,7 @@ export const AdminPortal: React.FC = () => {
           {/* Instagram Feed */}
           {(adminRole === 'super_admin' || adminRole === 'manager') && (
             <button
-              onClick={() => setActiveSubRoute('instagram')}
+              onClick={() => handleSubRouteSwitch('instagram')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -520,7 +533,15 @@ export const AdminPortal: React.FC = () => {
         {/* Exit footer */}
         <div style={{ padding: '20px 12px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <button
-            onClick={() => navigateTo('home')}
+            onClick={() => {
+              if (hasAnyUnsavedChanges) {
+                if (window.confirm("You have unsaved changes in the admin panel. Leaving will discard them. Are you sure you want to proceed?")) {
+                  navigateTo('home');
+                }
+              } else {
+                navigateTo('home');
+              }
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',

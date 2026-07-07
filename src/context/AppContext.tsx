@@ -109,8 +109,6 @@ interface AppContextType {
   
   // Accessories state & management
   accessories: Accessory[];
-  saveAccessory: (accessory: Omit<Accessory, 'id' | 'views' | 'sales' | 'createdAt'> & { id?: string }) => void;
-  deleteAccessory: (id: string) => void;
   incrementAccessoryViews: (id: string) => void;
   incrementAccessorySales: (id: string, quantity: number) => void;
   
@@ -118,16 +116,44 @@ interface AppContextType {
   addAdminEmail: (email: string, name: string) => boolean;
   removeAdminEmail: (email: string) => void;
   toggleAdminState: (email: string) => void;
-  saveDevice: (device: Omit<Device, 'id' | 'views' | 'sales'> & { id?: string }) => void;
-  duplicateDevice: (id: string) => void;
-  deleteDevice: (id: string) => void;
-  archiveDevice: (id: string) => void;
-  saveBanner: (banner: Omit<Banner, 'id'> & { id?: string }) => void;
-  deleteBanner: (id: string) => void;
-  reorderBanners: (list: Banner[]) => void;
-  saveFlashSale: (sale: Omit<FlashSale, 'id' | 'soldCount'> & { id?: string }) => void;
-  deleteFlashSale: (id: string) => void;
+  saveDevice: (device: Omit<Device, 'id' | 'views' | 'sales'> & { id?: string }) => Promise<void>;
+  duplicateDevice: (id: string) => Promise<void>;
+  deleteDevice: (id: string) => Promise<void>;
+  archiveDevice: (id: string) => Promise<void>;
+  saveBanner: (banner: Omit<Banner, 'id'> & { id?: string }) => Promise<void>;
+  deleteBanner: (id: string) => Promise<void>;
+  reorderBanners: (list: Banner[]) => Promise<void>;
+  saveFlashSale: (sale: Omit<FlashSale, 'id' | 'soldCount'> & { id?: string }) => Promise<void>;
+  deleteFlashSale: (id: string) => Promise<void>;
+  saveAccessory: (accessory: Omit<Accessory, 'id' | 'views' | 'sales' | 'createdAt'> & { id?: string }) => Promise<void>;
+  deleteAccessory: (id: string) => Promise<void>;
   
+  // Toast notifications
+  toasts: { id: string; message: string; type: 'success' | 'error' | 'info' }[];
+  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  
+  // Unsaved changes registry
+  unsavedModules: Record<string, boolean>;
+  registerUnsavedChanges: (moduleName: string, hasChanges: boolean) => void;
+  hasAnyUnsavedChanges: boolean;
+  
+  // Physical store settings
+  storeSettings: { storeName: string; storeAddress: string; storePhone: string; whatsappNumber: string; defaultGreeting: string };
+  saveAllSettings: (store: { storeName: string; storeAddress: string; storePhone: string; whatsappNumber: string; defaultGreeting: string }, whatsapp: WhatsAppSettings, instagram: InstagramSettings) => Promise<void>;
+  
+  // Instagram posts save
+  saveInstagramPostsList: (postsList: InstagramPost[]) => Promise<void>;
+  
+  // Refetches
+  refetchProducts: () => Promise<void>;
+  refetchBanners: () => Promise<void>;
+  refetchAccessories: () => Promise<void>;
+  refetchFlashSales: () => Promise<void>;
+  refetchOrders: () => Promise<void>;
+  refetchSettings: () => Promise<void>;
+  refetchInstagram: () => Promise<void>;
+  refetchAdmins: () => Promise<void>;
+
   // Notifications
   addNotification: (type: SystemNotification['type'], message: string, meta?: SystemNotification['meta']) => void;
   markNotificationRead: (id: string) => void;
@@ -150,6 +176,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Database loading & error states
   const [dbLoading, setDbLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
+
+  // Toast notifications state
+  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'error' | 'info' }[]>([]);
+
+  // Unsaved changes registry state
+  const [unsavedModules, setUnsavedModules] = useState<Record<string, boolean>>({});
+
+  // Physical store settings state
+  const [storeSettings, setStoreSettingsState] = useState<{ storeName: string; storeAddress: string; storePhone: string; whatsappNumber: string; defaultGreeting: string }>({
+    storeName: 'Sri Sai Mobiles',
+    storeAddress: 'Opposite Big C, Angadi Bazar, Jagtial, Telangana - 505327',
+    storePhone: '+91 8688303048',
+    whatsappNumber: '8688303048',
+    defaultGreeting: 'Welcome to Sri Sai Mobiles Jagtial! How can we assist you today?'
+  });
 
   // Theme state
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -310,52 +351,157 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo(0, 0);
   };
 
+  // Show Toast Alert Helper
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    const id = Date.now().toString() + Math.random().toString().slice(-4);
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4500);
+  };
+
+  // Unsaved registry registration
+  const registerUnsavedChanges = (moduleName: string, hasChanges: boolean) => {
+    setUnsavedModules(prev => {
+      if (prev[moduleName] === hasChanges) return prev;
+      return { ...prev, [moduleName]: hasChanges };
+    });
+  };
+
+  const hasAnyUnsavedChanges = Object.values(unsavedModules).some(Boolean);
+
+  // Individual Table Fetchers / Refetchers
+  const refetchProducts = async () => {
+    const { data, error } = await supabase.from('products').select('*');
+    if (error) throw error;
+    setDevices((data || []).map(mapDbProductToDevice));
+  };
+
+  const refetchBanners = async () => {
+    const { data, error } = await supabase.from('banners').select('*');
+    if (error) throw error;
+    setBanners((data || []).map(mapDbBannerToBanner).sort((a, b) => a.priority - b.priority));
+  };
+
+  const refetchOrders = async () => {
+    const { data, error } = await supabase.from('orders').select('*');
+    if (error) throw error;
+    setOrders((data || []).map(mapDbOrderToOrder).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()));
+  };
+
+  const refetchAdmins = async () => {
+    const { data, error } = await supabase.from('users').select('*');
+    if (error) throw error;
+    const fetched = (data || [])
+      .filter((u: any) => u.role !== 'customer')
+      .map((u: any) => ({
+        email: u.email,
+        name: u.name || 'Administrator',
+        role: u.role === 'disabled_admin' ? 'admin' : (u.role === 'disabled_manager' ? 'manager' : u.role),
+        enabled: u.enabled ?? (u.role !== 'disabled_admin' && u.role !== 'disabled_manager'),
+        dateAdded: u.created_at || new Date().toISOString()
+      }));
+    setAdmins(fetched.length > 0 ? fetched : INITIAL_ADMINS);
+  };
+
+  const refetchFlashSales = async () => {
+    const { data, error } = await supabase.from('flash_sales').select('*');
+    if (error) throw error;
+    setFlashSales((data || []).map(mapDbFlashSaleToFlashSale));
+  };
+
+  const refetchAccessories = async () => {
+    const { data, error } = await supabase.from('accessories').select('*');
+    if (error) throw error;
+    setAccessories((data || []).map(mapDbAccessoryToAccessory));
+  };
+
+  const refetchSettings = async () => {
+    const { data, error } = await supabase.from('settings').select('*');
+    if (error) throw error;
+    let storeInfo = data?.[0] || {
+      store_name: 'Sri Sai Mobiles',
+      store_address: 'Opposite Big C, Angadi Bazar, Jagtial, Telangana - 505327',
+      store_phone: '+91 8688303048',
+      whatsapp_number: '8688303048',
+      default_greeting: 'Welcome to Sri Sai Mobiles Jagtial! How can we assist you today?'
+    };
+    
+    setStoreSettingsState({
+      storeName: storeInfo.store_name,
+      storeAddress: storeInfo.store_address,
+      storePhone: storeInfo.store_phone,
+      whatsappNumber: storeInfo.whatsapp_number,
+      defaultGreeting: storeInfo.default_greeting,
+    });
+
+    if (storeInfo.whatsapp_settings) {
+      setWhatsAppSettings(storeInfo.whatsapp_settings);
+    }
+    if (storeInfo.instagram_settings) {
+      setInstagramSettings(storeInfo.instagram_settings);
+    }
+  };
+
+  const refetchInstagram = async () => {
+    try {
+      const { data, error } = await supabase.from('instagram_posts').select('*');
+      if (error) throw error;
+      const mapped = (data || []).map((d: any) => ({
+        id: d.id,
+        url: d.url,
+        type: d.type,
+        thumbnailUrl: d.thumbnail_url,
+        customTitle: d.custom_title,
+        customDescription: d.custom_description,
+        displayOrder: d.display_order,
+        isFeatured: d.is_featured,
+        isActive: d.is_active,
+        position: d.position,
+        expiryDate: d.expiry_date,
+        views: d.views,
+        clicks: d.clicks,
+        createdAt: d.created_at
+      })).sort((a: any, b: any) => a.displayOrder - b.displayOrder);
+      setInstagramPosts(mapped);
+      sessionStorage.setItem('srisai_instagram_posts', JSON.stringify(mapped));
+    } catch (err) {
+      console.warn("instagram_posts table missing or query failed. Falling back to local state.", err);
+      const saved = sessionStorage.getItem('srisai_instagram_posts');
+      if (saved) setInstagramPosts(JSON.parse(saved));
+    }
+  };
+
   // 1. Seed & Load DB on mount
   const loadInitialData = async () => {
     try {
       setDbLoading(true);
       setDbError(null);
 
-      // Fetch products
-      let { data: productsData, error: pError } = await fetchWithTimeout(supabase.from('products').select('*') as any, 4000);
-      if (pError) throw pError;
-      
-      if (!productsData || productsData.length === 0) {
+      // Verify seeding condition for products
+      let { data: pData } = await supabase.from('products').select('id').limit(1);
+      if (!pData || pData.length === 0) {
         const seeds = INITIAL_DEVICES.map(mapDeviceToDbProduct);
         await supabase.from('products').insert(seeds);
-        const { data: refetched } = await supabase.from('products').select('*');
-        productsData = refetched || [];
       }
-      setDevices(productsData.map(mapDbProductToDevice));
 
-      // Fetch banners
-      let { data: bannersData, error: bError } = await fetchWithTimeout(supabase.from('banners').select('*') as any, 4000);
-      if (bError) throw bError;
-
-      if (!bannersData || bannersData.length === 0) {
+      // Verify seeding condition for banners
+      let { data: bData } = await supabase.from('banners').select('id').limit(1);
+      if (!bData || bData.length === 0) {
         const seeds = INITIAL_BANNERS.map(mapBannerToDbBanner);
         await supabase.from('banners').insert(seeds);
-        const { data: refetched } = await supabase.from('banners').select('*');
-        bannersData = refetched || [];
       }
-      setBanners(bannersData.map(mapDbBannerToBanner).sort((a: Banner, b: Banner) => a.priority - b.priority));
 
-      // Fetch orders
-      let { data: ordersData, error: oError } = await fetchWithTimeout(supabase.from('orders').select('*') as any, 4000);
-      if (oError) throw oError;
-
-      if (!ordersData || ordersData.length === 0) {
+      // Verify seeding condition for orders
+      let { data: oData } = await supabase.from('orders').select('id').limit(1);
+      if (!oData || oData.length === 0) {
         const seeds = INITIAL_ORDERS.map(mapOrderToDbOrder);
         await supabase.from('orders').insert(seeds);
-        const { data: refetched } = await supabase.from('orders').select('*');
-        ordersData = refetched || [];
       }
-      setOrders(ordersData.map(mapDbOrderToOrder).sort((a: Order, b: Order) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()));
 
-      // Ensure users are seeded
-      const { data: usersData, error: uError } = await fetchWithTimeout(supabase.from('users').select('*') as any, 4000);
-      if (uError) throw uError;
-      if (!usersData || usersData.length === 0) {
+      // Verify seeding condition for users
+      let { data: uData } = await supabase.from('users').select('id').limit(1);
+      if (!uData || uData.length === 0) {
         const adminUsers = INITIAL_ADMINS.map(adm => ({
           email: adm.email.toLowerCase(),
           role: adm.role
@@ -363,47 +509,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await supabase.from('users').insert(adminUsers);
       }
 
-      // Fetch flash sales
-      let flashSalesData: any[] = [];
-      try {
-        const { data, error } = await fetchWithTimeout(supabase.from('flash_sales').select('*') as any, 4000);
-        if (!error && data) {
-          flashSalesData = data;
-        } else {
-          const seeds = INITIAL_FLASH_SALES.map(mapFlashSaleToDbFlashSale);
-          await supabase.from('flash_sales').insert(seeds);
-          const { data: refetched } = await supabase.from('flash_sales').select('*');
-          flashSalesData = refetched || [];
-        }
-      } catch (e) {
-        console.warn('Flash sales seeding/fetch failed, falling back to seed:', e);
-      }
-      if (flashSalesData && flashSalesData.length > 0) {
-        setFlashSales(flashSalesData.map(mapDbFlashSaleToFlashSale));
-      } else {
-        setFlashSales(INITIAL_FLASH_SALES);
+      // Verify seeding condition for settings
+      let { data: sData } = await supabase.from('settings').select('id').limit(1);
+      if (!sData || sData.length === 0) {
+        const seedSetting = {
+          id: 'ac000000-0000-0000-0000-000000000001',
+          store_name: 'Sri Sai Mobiles',
+          store_address: 'Opposite Big C, Angadi Bazar, Jagtial, Telangana - 505327',
+          store_phone: '+91 8688303048',
+          whatsapp_number: '8688303048',
+          default_greeting: 'Welcome to Sri Sai Mobiles Jagtial! How can we assist you today?'
+        };
+        await supabase.from('settings').insert(seedSetting);
       }
 
-      // Fetch accessories
-      let accessoriesData: any[] = [];
-      try {
-        const { data, error } = await fetchWithTimeout(supabase.from('accessories').select('*') as any, 4000);
-        if (!error && data) {
-          accessoriesData = data;
-        } else {
-          const seeds = INITIAL_ACCESSORIES.map(mapAccessoryToDbAccessory);
-          await supabase.from('accessories').insert(seeds);
-          const { data: refetched } = await supabase.from('accessories').select('*');
-          accessoriesData = refetched || [];
-        }
-      } catch (e) {
-        console.warn('Accessories seeding/fetch failed, falling back to seed:', e);
+      // Verify seeding condition for flash sales
+      let { data: fsData } = await supabase.from('flash_sales').select('id').limit(1);
+      if (!fsData || fsData.length === 0) {
+        const seeds = INITIAL_FLASH_SALES.map(mapFlashSaleToDbFlashSale);
+        await supabase.from('flash_sales').insert(seeds);
       }
-      if (accessoriesData && accessoriesData.length > 0) {
-        setAccessories(accessoriesData.map(mapDbAccessoryToAccessory));
-      } else {
-        setAccessories(INITIAL_ACCESSORIES);
+
+      // Verify seeding condition for accessories
+      let { data: accData } = await supabase.from('accessories').select('id').limit(1);
+      if (!accData || accData.length === 0) {
+        const seeds = INITIAL_ACCESSORIES.map(mapAccessoryToDbAccessory);
+        await supabase.from('accessories').insert(seeds);
       }
+
+      // Execute refetches in parallel
+      await Promise.all([
+        refetchProducts(),
+        refetchBanners(),
+        refetchOrders(),
+        refetchAdmins(),
+        refetchFlashSales(),
+        refetchAccessories(),
+        refetchSettings(),
+        refetchInstagram()
+      ]);
 
     } catch (err: any) {
       console.error('Error seeding/fetching database:', err);
@@ -429,6 +573,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // Prevent accidental browser reloads when unsaved changes exist
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasAnyUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes in the admin panel. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasAnyUnsavedChanges]);
 
   // 2. Realtime Listeners
   useEffect(() => {
@@ -1340,6 +1499,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err) {
       console.error('Failed to save device:', err);
+      throw err;
     }
   };
 
@@ -1361,6 +1521,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAuditLog(`Duplicated Smartphone Entry: ID ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to duplicate device:', err);
+      throw err;
     }
   };
 
@@ -1372,6 +1533,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAuditLog(`Deleted Smartphone Entry: ID ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to delete device:', err);
+      throw err;
     }
   };
 
@@ -1382,6 +1544,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAuditLog(`Archived Smartphone Entry: ID ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to archive device:', err);
+      throw err;
     }
   };
 
@@ -1407,6 +1570,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err) {
       console.error('Failed to save banner:', err);
+      throw err;
     }
   };
 
@@ -1417,6 +1581,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAuditLog(`Deleted Banner ID: ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to delete banner:', err);
+      throw err;
     }
   };
 
@@ -1434,6 +1599,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAuditLog(`Reordered Banners Display Sequence`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to reorder banners:', err);
+      throw err;
     }
   };
 
@@ -1461,6 +1627,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err) {
       console.error('Failed to save flash sale:', err);
+      throw err;
     }
   };
 
@@ -1472,6 +1639,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAuditLog(`Deleted Flash Sale Entry ID: ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to delete flash sale:', err);
+      throw err;
     }
   };
 
@@ -1512,6 +1680,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err) {
       console.error('Failed to save accessory:', err);
+      throw err;
     }
   };
 
@@ -1524,6 +1693,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAuditLog(`Deleted Accessory Entry ID: ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to delete accessory:', err);
+      throw err;
     }
   };
 
@@ -1564,6 +1734,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
+  const saveAllSettings = async (
+    store: typeof storeSettings,
+    whatsapp: WhatsAppSettings,
+    instagram: InstagramSettings
+  ) => {
+    try {
+      const { error } = await supabase.from('settings').update({
+        store_name: store.storeName,
+        store_address: store.storeAddress,
+        store_phone: store.storePhone,
+        whatsapp_number: store.whatsappNumber,
+        default_greeting: store.defaultGreeting,
+        whatsapp_settings: whatsapp,
+        instagram_settings: instagram
+      }).eq('id', 'ac000000-0000-0000-0000-000000000001');
+
+      if (error) {
+        console.warn("Failed to save settings with JSON fields, attempting fallback basic settings save:", error.message);
+        const { error: fallbackError } = await supabase.from('settings').update({
+          store_name: store.storeName,
+          store_address: store.storeAddress,
+          store_phone: store.storePhone,
+          whatsapp_number: store.whatsappNumber,
+          default_greeting: store.defaultGreeting
+        }).eq('id', 'ac000000-0000-0000-0000-000000000001');
+        
+        if (fallbackError) throw fallbackError;
+      }
+      
+      setStoreSettingsState(store);
+      setWhatsAppSettings(whatsapp);
+      setInstagramSettings(instagram);
+      
+      sessionStorage.setItem('srisai_whatsapp_settings', JSON.stringify(whatsapp));
+      sessionStorage.setItem('srisai_instagram_settings', JSON.stringify(instagram));
+      
+      showToast("Store settings saved successfully!", "success");
+    } catch (err: any) {
+      console.error("Save settings failed:", err);
+      showToast("Failed to save store settings: " + err.message, "error");
+      throw err;
+    }
+  };
+
+  const saveInstagramPostsList = async (postsList: InstagramPost[]) => {
+    try {
+      const { error: delError } = await supabase.from('instagram_posts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (delError) {
+        console.warn("Could not delete from instagram_posts table, trying direct insert/upsert:", delError.message);
+      }
+      
+      if (postsList.length > 0) {
+        const rows = postsList.map(p => ({
+          url: p.url,
+          type: p.type,
+          thumbnail_url: p.thumbnailUrl,
+          custom_title: p.customTitle || null,
+          custom_description: p.customDescription || null,
+          display_order: p.displayOrder,
+          is_featured: p.isFeatured,
+          is_active: p.isActive,
+          position: p.position || 'middle',
+          expiry_date: p.expiryDate || null,
+          views: p.views || 0,
+          clicks: p.clicks || 0
+        }));
+        
+        const { error: insError } = await supabase.from('instagram_posts').insert(rows);
+        if (insError) throw insError;
+      }
+      
+      await refetchInstagram();
+      showToast("Instagram feed saved successfully!", "success");
+    } catch (err: any) {
+      console.error("Save Instagram posts failed:", err);
+      showToast("Failed to save Instagram feed: " + err.message, "error");
+      throw err;
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       dbLoading,
@@ -1586,28 +1836,98 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addOrderNote, issueRefund, addCallLog,
       auditLogs, addAuditLog, clearAuditLogs,
       adminRole, setAdminRole,
-
+ 
       // WhatsApp Settings & Analytics
       whatsAppSettings, setWhatsAppSettings, whatsAppAnalytics,
       trackWhatsAppClick, clearWhatsAppAnalytics,
-
+ 
       // Instagram Posts
       instagramPosts, addInstagramPost, updateInstagramPost,
       deleteInstagramPost, reorderInstagramPosts, instagramSettings,
       updateInstagramSettings, trackInstagramPostView, trackInstagramPostClick,
-
+ 
       // Accessories
       accessories, saveAccessory, deleteAccessory,
       incrementAccessoryViews, incrementAccessorySales,
-
+ 
       addAdminEmail, removeAdminEmail, toggleAdminState,
       saveDevice, duplicateDevice, deleteDevice, archiveDevice,
       saveBanner, deleteBanner, reorderBanners,
       saveFlashSale, deleteFlashSale,
       addNotification, markNotificationRead, markAllNotificationsRead,
-      incrementDeviceViews
+      incrementDeviceViews,
+
+      // Toast notifications
+      toasts, showToast,
+      
+      // Unsaved changes registry
+      unsavedModules, registerUnsavedChanges, hasAnyUnsavedChanges,
+
+      // Physical store settings
+      storeSettings, saveAllSettings,
+
+      // Instagram posts save list
+      saveInstagramPostsList,
+
+      // Refetches
+      refetchProducts, refetchBanners, refetchAccessories, refetchFlashSales,
+      refetchOrders, refetchSettings, refetchInstagram, refetchAdmins
     }}>
       {children}
+      {/* Toast Overlay Renderer */}
+      <div style={{
+        position: 'fixed',
+        bottom: '24px',
+        right: '24px',
+        zIndex: 99999,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        pointerEvents: 'none'
+      }}>
+        {toasts.map(t => (
+          <div 
+            key={t.id} 
+            className="glass" 
+            style={{
+              padding: '12px 20px',
+              borderRadius: '12px',
+              border: t.type === 'success' ? '1px solid rgba(16, 185, 129, 0.4)' : (t.type === 'error' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(59, 130, 246, 0.4)'),
+              backgroundColor: t.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : (t.type === 'error' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)'),
+              color: 'var(--text-main)',
+              fontSize: '13px',
+              fontWeight: 600,
+              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
+              backdropFilter: 'blur(8px)',
+              pointerEvents: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              animation: 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+            }}
+          >
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: t.type === 'success' ? '#10b981' : (t.type === 'error' ? '#ef4444' : '#3b82f6')
+            }} />
+            <span>{t.message}</span>
+          </div>
+        ))}
+      </div>
+      <style>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%) translateY(10px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0) translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </AppContext.Provider>
   );
 };

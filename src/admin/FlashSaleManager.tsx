@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { FlashSale } from '../types';
 import { Plus, Trash, X, Calendar, Flame, AlertCircle, Save } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export const FlashSaleManager: React.FC = () => {
-  const { flashSales, devices, saveFlashSale, deleteFlashSale } = useApp();
+  const { flashSales, devices, showToast, registerUnsavedChanges, refetchFlashSales } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<FlashSale | null>(null);
 
@@ -16,18 +17,51 @@ export const FlashSaleManager: React.FC = () => {
   const [endTime, setEndTime] = useState('');
   const [enabled, setEnabled] = useState(true);
 
-  const activeSales = flashSales.filter(fs => devices.find(d => d.id === fs.deviceId)?.status !== 'archived'); // just list all in storage
+  // Buffer and Edit states
+  const [localSales, setLocalSales] = useState<FlashSale[]>([]);
+  const [deletedSaleIds, setDeletedSaleIds] = useState<string[]>([]);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Sync with context on load / save success
+  useEffect(() => {
+    if (saveStatus !== 'unsaved' && saveStatus !== 'saving') {
+      setLocalSales(flashSales);
+      setDeletedSaleIds([]);
+    }
+  }, [flashSales, saveStatus]);
+
+  // Check for unsaved changes
+  useEffect(() => {
+    const hasDiff = JSON.stringify(localSales) !== JSON.stringify(flashSales)
+      || deletedSaleIds.length > 0;
+      
+    if (hasDiff) {
+      setSaveStatus('unsaved');
+      registerUnsavedChanges('flash_sales', true);
+    } else {
+      setSaveStatus('idle');
+      registerUnsavedChanges('flash_sales', false);
+    }
+  }, [localSales, deletedSaleIds, flashSales]);
+
+  // Unmount protection
+  useEffect(() => {
+    return () => {
+      registerUnsavedChanges('flash_sales', false);
+    };
+  }, []);
+
+  const activeSales = localSales.filter(fs => devices.find(d => d.id === fs.deviceId)?.status !== 'archived');
 
   const openAddModal = () => {
     setEditingSale(null);
-    // select first device as default
     setDeviceId(devices[0]?.id || '');
     setDiscountPercentage(15);
     setStockLimit(5);
 
     const now = new Date();
     const future = new Date();
-    future.setHours(now.getHours() + 4); // 4 hour duration
+    future.setHours(now.getHours() + 4);
 
     setStartTime(now.toISOString().substring(0, 16));
     setEndTime(future.toISOString().substring(0, 16));
@@ -59,17 +93,85 @@ export const FlashSaleManager: React.FC = () => {
       return;
     }
 
-    saveFlashSale({
-      id: editingSale?.id,
+    const id = editingSale?.id || `fs-temp-${Date.now()}`;
+    const newOrUpdated: FlashSale = {
+      id,
       deviceId,
       discountPercentage: Number(discountPercentage),
       stockLimit: Number(stockLimit),
       startTime: new Date(startTime).toISOString(),
       endTime: new Date(endTime).toISOString(),
-      enabled
-    });
+      enabled,
+      soldCount: editingSale?.soldCount || 0
+    };
+
+    if (editingSale) {
+      setLocalSales(prev => prev.map(fs => fs.id === editingSale.id ? newOrUpdated : fs));
+    } else {
+      setLocalSales(prev => [...prev, newOrUpdated]);
+    }
 
     setIsModalOpen(false);
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this flash sale deal?")) {
+      setLocalSales(prev => prev.filter(fs => fs.id !== id));
+      if (!id.startsWith('fs-temp-') && flashSales.some(fs => fs.id === id)) {
+        setDeletedSaleIds(prev => [...prev, id]);
+      }
+      showToast("Campaign removed locally", "info");
+    }
+  };
+
+  const handleDiscard = () => {
+    setLocalSales(flashSales);
+    setDeletedSaleIds([]);
+    setSaveStatus('idle');
+    registerUnsavedChanges('flash_sales', false);
+    showToast("Changes discarded", "info");
+  };
+
+  const handleSaveChanges = async () => {
+    setSaveStatus('saving');
+    try {
+      // 1. Delete
+      for (const id of deletedSaleIds) {
+        const { error } = await supabase.from('flash_sales').delete().eq('id', id);
+        if (error) throw error;
+      }
+      
+      // 2. Insert/Update
+      for (const fs of localSales) {
+        const dbSale = {
+          device_id: fs.deviceId,
+          discount_percentage: fs.discountPercentage,
+          stock_limit: fs.stockLimit,
+          start_time: fs.startTime,
+          end_time: fs.endTime,
+          enabled: fs.enabled,
+          sold_count: fs.soldCount
+        };
+        
+        if (fs.id.startsWith('fs-temp-')) {
+          const { error } = await supabase.from('flash_sales').insert(dbSale);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('flash_sales').update(dbSale).eq('id', fs.id);
+          if (error) throw error;
+        }
+      }
+      
+      await refetchFlashSales();
+      setSaveStatus('saved');
+      registerUnsavedChanges('flash_sales', false);
+      showToast("Flash sales saved successfully!", "success");
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (err: any) {
+      console.error("Failed to save flash sales:", err);
+      setSaveStatus('error');
+      showToast("Failed to save campaigns: " + err.message, "error");
+    }
   };
 
   const getStatusText = (fs: FlashSale): { text: string; color: string } => {
@@ -103,6 +205,62 @@ export const FlashSaleManager: React.FC = () => {
           <span>Launch Deal</span>
         </button>
       </div>
+
+      {/* Floating Save Changes Bar */}
+      {saveStatus !== 'idle' && (
+        <div style={{
+          position: 'sticky',
+          top: '10px',
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px 24px',
+          borderRadius: '16px',
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          border: '1px solid var(--border-color)',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+          marginBottom: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: saveStatus === 'unsaved' ? '#f59e0b' : (saveStatus === 'saving' ? '#3b82f6' : (saveStatus === 'saved' ? '#10b981' : '#ef4444')),
+              boxShadow: `0 0 10px ${saveStatus === 'unsaved' ? '#f59e0b' : (saveStatus === 'saving' ? '#3b82f6' : (saveStatus === 'saved' ? '#10b981' : '#ef4444'))}`
+            }} />
+            <span style={{ fontSize: '13px', fontWeight: 600 }}>
+              {saveStatus === 'unsaved' && "You have unsaved changes"}
+              {saveStatus === 'saving' && "Saving changes to Supabase..."}
+              {saveStatus === 'saved' && "Changes saved successfully!"}
+              {saveStatus === 'error' && "Failed to save changes. Please check RLS permissions."}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              type="button"
+              onClick={handleDiscard}
+              className="premium-btn btn-secondary"
+              style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '12px' }}
+              disabled={saveStatus === 'saving'}
+            >
+              Discard Changes
+            </button>
+            <button 
+              type="button"
+              onClick={handleSaveChanges}
+              className="premium-btn btn-primary"
+              style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '12px', minWidth: '120px' }}
+              disabled={saveStatus !== 'unsaved'}
+            >
+              {saveStatus === 'saving' ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Grid of campaigns */}
       <div className="glass-card" style={{ padding: '0', overflowX: 'auto', borderRadius: '16px' }}>
@@ -196,7 +354,7 @@ export const FlashSaleManager: React.FC = () => {
                         Edit
                       </button>
                       <button 
-                        onClick={() => deleteFlashSale(fs.id)}
+                        onClick={() => handleDelete(fs.id)}
                         style={{ border: 'none', background: 'rgba(239,68,68,0.1)', color: 'var(--error)', cursor: 'pointer', padding: '8px', borderRadius: '6px' }}
                       >
                         <Trash size={14} />
@@ -236,7 +394,7 @@ export const FlashSaleManager: React.FC = () => {
             overflow: 'hidden'
           }}>
             {/* Modal Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid var(--border-color)' }}>
               <h3 style={{ fontSize: '18px', fontWeight: 800 }}>
                 {editingSale ? 'Edit Flash Sale Deal' : 'Schedule New Flash Deal'}
               </h3>

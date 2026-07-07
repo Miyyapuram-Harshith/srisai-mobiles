@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Order, OrderStatus, Address } from '../types';
+import { supabase, mapOrderToDbOrder } from '../lib/supabase';
 import { 
   Search, Copy, Check, Eye, Trash2, ArrowUpDown, ChevronLeft, ChevronRight, 
   Download, Printer, Send, MessageCircle, FileText, Landmark, Clock, UserPlus, 
@@ -13,9 +14,158 @@ interface OrderManagerProps {
 
 export const OrderManager: React.FC<OrderManagerProps> = ({ defaultFilter }) => {
   const { 
-    orders, updateOrderStatus, updateOrderDelivery, updateOrderPayment, 
-    addOrderNote, issueRefund, addCallLog, adminRole, addAuditLog, currentUser, devices
+    orders: contextOrders, adminRole, addAuditLog, currentUser, devices, showToast, registerUnsavedChanges, refetchOrders
   } = useApp();
+
+  const [localOrders, setLocalOrders] = useState<Order[]>([]);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved' | 'error'>('idle');
+  const orders = localOrders;
+
+  // Sync with context orders on load or successful save
+  useEffect(() => {
+    if (saveStatus !== 'unsaved' && saveStatus !== 'saving') {
+      setLocalOrders(contextOrders);
+    }
+  }, [contextOrders, saveStatus]);
+
+  // Check for unsaved changes
+  useEffect(() => {
+    const hasDiff = JSON.stringify(localOrders) !== JSON.stringify(contextOrders);
+    if (hasDiff) {
+      setSaveStatus('unsaved');
+      registerUnsavedChanges('orders', true);
+    } else {
+      setSaveStatus('idle');
+      registerUnsavedChanges('orders', false);
+    }
+  }, [localOrders, contextOrders]);
+
+  // Unmount protection
+  useEffect(() => {
+    return () => {
+      registerUnsavedChanges('orders', false);
+    };
+  }, []);
+
+  // Local OMS mutators
+  const updateOrderStatus = (orderId: string, status: OrderStatus, updatedBy?: string) => {
+    setLocalOrders(prev => 
+      prev.map(o => {
+        if (o.id === orderId) {
+          const nowStr = new Date().toISOString();
+          const desc = `Order status changed to ${status.replace(/_/g, ' ')}.`;
+          const actualDeliveryDate = status === 'delivered' ? nowStr : o.actualDeliveryDate;
+          
+          return {
+            ...o,
+            orderStatus: status,
+            actualDeliveryDate,
+            timeline: [
+              ...o.timeline,
+              { status, timestamp: nowStr, description: desc, updatedBy: updatedBy || 'System' }
+            ]
+          };
+        }
+        return o;
+      })
+    );
+  };
+
+  const updateOrderDelivery = (orderId: string, deliveryDetails: Partial<Order>) => {
+    setLocalOrders(prev => 
+      prev.map(o => o.id === orderId ? { ...o, ...deliveryDetails } : o)
+    );
+  };
+
+  const updateOrderPayment = (orderId: string, paymentDetails: Partial<Order>) => {
+    setLocalOrders(prev => 
+      prev.map(o => o.id === orderId ? { ...o, ...paymentDetails } : o)
+    );
+  };
+
+  const addOrderNote = (orderId: string, note: string) => {
+    setLocalOrders(prev => 
+      prev.map(o => o.id === orderId ? { ...o, internalNotes: [...(o.internalNotes || []), note] } : o)
+    );
+  };
+
+  const issueRefund = (orderId: string, refundDetails: { amount: number; method: string; reason?: string }) => {
+    setLocalOrders(prev => 
+      prev.map(o => {
+        if (o.id === orderId) {
+          const nowStr = new Date().toISOString();
+          const refundId = `SSM-REF-${Date.now().toString().slice(-6)}`;
+          return {
+            ...o,
+            orderStatus: 'refunded' as const,
+            paymentStatus: 'refunded' as const,
+            refundId,
+            refundAmount: refundDetails.amount,
+            refundMethod: refundDetails.method,
+            refundDate: nowStr,
+            returnReason: refundDetails.reason || 'Requested by Customer',
+            timeline: [
+              ...o.timeline,
+              { status: 'refunded', timestamp: nowStr, description: `Refund Issued: ₹${refundDetails.amount} via ${refundDetails.method}. Ref ID: ${refundId}`, updatedBy: 'Super Admin' }
+            ]
+          };
+        }
+        return o;
+      })
+    );
+  };
+
+  const addCallLog = (orderId: string, call: { duration: string; staffName: string; summary: string }) => {
+    setLocalOrders(prev => 
+      prev.map(o => {
+        if (o.id === orderId) {
+          const callEntry = {
+            id: `call-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            ...call
+          };
+          return {
+            ...o,
+            callLogs: [...(o.callLogs || []), callEntry]
+          };
+        }
+        return o;
+      })
+    );
+  };
+
+  const handleDiscard = () => {
+    setLocalOrders(contextOrders);
+    setSaveStatus('idle');
+    registerUnsavedChanges('orders', false);
+    showToast("Changes discarded", "info");
+  };
+
+  const handleSaveChanges = async () => {
+    setSaveStatus('saving');
+    try {
+      const modifiedOrders = localOrders.filter(lo => {
+        const co = contextOrders.find(o => o.id === lo.id);
+        return JSON.stringify(lo) !== JSON.stringify(co);
+      });
+      
+      for (const o of modifiedOrders) {
+        const dbOrder = mapOrderToDbOrder(o);
+        const { error } = await supabase.from('orders').update(dbOrder).eq('id', o.id);
+        if (error) throw error;
+      }
+      
+      await refetchOrders();
+      setSaveStatus('saved');
+      registerUnsavedChanges('orders', false);
+      showToast("Order changes committed successfully!", "success");
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (err: any) {
+      console.error("Failed to save orders:", err);
+      setSaveStatus('error');
+      showToast("Failed to save orders: " + err.message, "error");
+    }
+  };
 
   // Search, Pagination, Filtering, & Resizing States
   const [searchQuery, setSearchQuery] = useState('');
@@ -659,6 +809,62 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ defaultFilter }) => 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      
+      {/* Floating Save Changes Bar */}
+      {saveStatus !== 'idle' && (
+        <div style={{
+          position: 'sticky',
+          top: '10px',
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px 24px',
+          borderRadius: '16px',
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          border: '1px solid var(--border-color)',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+          marginBottom: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: saveStatus === 'unsaved' ? '#f59e0b' : (saveStatus === 'saving' ? '#3b82f6' : (saveStatus === 'saved' ? '#10b981' : '#ef4444')),
+              boxShadow: `0 0 10px ${saveStatus === 'unsaved' ? '#f59e0b' : (saveStatus === 'saving' ? '#3b82f6' : (saveStatus === 'saved' ? '#10b981' : '#ef4444'))}`
+            }} />
+            <span style={{ fontSize: '13px', fontWeight: 600 }}>
+              {saveStatus === 'unsaved' && "You have unsaved changes"}
+              {saveStatus === 'saving' && "Saving changes to Supabase..."}
+              {saveStatus === 'saved' && "Changes saved successfully!"}
+              {saveStatus === 'error' && "Failed to save changes. Please check RLS permissions."}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              type="button"
+              onClick={handleDiscard}
+              className="premium-btn btn-secondary"
+              style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '12px' }}
+              disabled={saveStatus === 'saving'}
+            >
+              Discard Changes
+            </button>
+            <button 
+              type="button"
+              onClick={handleSaveChanges}
+              className="premium-btn btn-primary"
+              style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '12px', minWidth: '120px' }}
+              disabled={saveStatus !== 'unsaved'}
+            >
+              {saveStatus === 'saving' ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* 📊 ANALYTICS OVERVIEW STRIP */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
