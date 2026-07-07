@@ -104,14 +104,15 @@ export interface Device {
 
 export interface Banner {
   id: string;
-  imageUrl: string;
+  image_url: string;
   title: string;
-  redirectLink: string;
-  startDate: string; // ISO String
-  endDate: string; // ISO String
-  slideshowTimer: number; // in seconds
-  enabled: boolean;
-  order: number;
+  subtitle?: string;
+  redirect_link: string;
+  start_date?: string;
+  end_date?: string;
+  slideshow_timer: number; // in seconds
+  active: boolean;
+  priority: number;
 }
 
 export interface FlashSale {

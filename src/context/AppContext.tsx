@@ -338,7 +338,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const { data: refetched } = await supabase.from('banners').select('*');
         bannersData = refetched || [];
       }
-      setBanners(bannersData.map(mapDbBannerToBanner).sort((a: Banner, b: Banner) => a.order - b.order));
+      setBanners(bannersData.map(mapDbBannerToBanner).sort((a: Banner, b: Banner) => a.priority - b.priority));
 
       // Fetch orders
       let { data: ordersData, error: oError } = await fetchWithTimeout(supabase.from('orders').select('*') as any, 4000);
@@ -457,11 +457,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const newBanner = mapDbBannerToBanner(payload.new);
           setBanners(prev => {
             if (prev.some(b => b.id === newBanner.id)) return prev;
-            return [...prev, newBanner].sort((a, b) => a.order - b.order);
+            return [...prev, newBanner].sort((a, b) => a.priority - b.priority);
           });
         } else if (payload.eventType === 'UPDATE') {
           const updatedBanner = mapDbBannerToBanner(payload.new);
-          setBanners(prev => prev.map(b => b.id === updatedBanner.id ? updatedBanner : b).sort((a, b) => a.order - b.order));
+          setBanners(prev => prev.map(b => b.id === updatedBanner.id ? updatedBanner : b).sort((a, b) => a.priority - b.priority));
         } else if (payload.eventType === 'DELETE') {
           setBanners(prev => prev.filter(b => b.id !== payload.old.id));
         }
@@ -1398,7 +1398,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const newBanner: Partial<Banner> = {
           ...bannerData,
           id,
-          order: banners.length + 1
+          priority: banners.length + 1
         };
         const dbBanner = mapBannerToDbBanner(newBanner);
         const { error } = await supabase.from('banners').insert(dbBanner);
@@ -1425,8 +1425,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const updates = list.map((b, idx) => ({
         id: b.id,
         title: b.title,
-        image_url: b.imageUrl,
-        active: b.enabled,
+        image_url: b.image_url,
+        active: b.active,
         priority: idx + 1
       }));
       const { error } = await supabase.from('banners').upsert(updates);

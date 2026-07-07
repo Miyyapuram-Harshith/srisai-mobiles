@@ -193,27 +193,28 @@ export const mapDeviceToDbProduct = (device: Partial<Device>): any => ({
 // ==========================================
 export const mapDbBannerToBanner = (db: any): Banner => ({
   id: db.id,
-  imageUrl: db.image_url,
+  image_url: db.image_url,
   title: db.title,
-  redirectLink: db.redirect_link || '',
-  startDate: db.start_date || '',
-  endDate: db.end_date || '',
-  slideshowTimer: db.slideshow_timer || 5,
-  enabled: db.active,
-  order: db.priority,
+  subtitle: db.subtitle || '',
+  redirect_link: db.redirect_link || '',
+  start_date: db.start_date || '',
+  end_date: db.end_date || '',
+  slideshow_timer: db.slideshow_timer || 5,
+  active: db.active,
+  priority: db.priority,
 });
 
 export const mapBannerToDbBanner = (banner: Partial<Banner>): any => ({
   id: banner.id,
   title: banner.title,
-  subtitle: banner.title,
-  image_url: banner.imageUrl,
-  active: banner.enabled,
-  priority: banner.order,
-  redirect_link: banner.redirectLink,
-  start_date: banner.startDate,
-  end_date: banner.endDate,
-  slideshow_timer: banner.slideshowTimer,
+  subtitle: banner.subtitle || banner.title,
+  image_url: banner.image_url,
+  active: banner.active,
+  priority: banner.priority,
+  redirect_link: banner.redirect_link,
+  start_date: banner.start_date,
+  end_date: banner.end_date,
+  slideshow_timer: banner.slideshow_timer,
 });
 
 export const mapDbOrderToOrder = (db: any): Order => ({

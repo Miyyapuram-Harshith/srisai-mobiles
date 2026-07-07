@@ -41,14 +41,14 @@ export const BannerManager: React.FC = () => {
   const openEditModal = (b: Banner) => {
     setEditingBanner(b);
     setTitle(b.title);
-    setImageUrl(b.imageUrl);
-    setRedirectLink(b.redirectLink);
+    setImageUrl(b.image_url);
+    setRedirectLink(b.redirect_link);
     
     // Format to local datetime input compatibility
-    setStartDate(new Date(b.startDate).toISOString().substring(0, 16));
-    setEndDate(new Date(b.endDate).toISOString().substring(0, 16));
-    setSlideshowTimer(b.slideshowTimer);
-    setEnabled(b.enabled);
+    setStartDate(b.start_date ? new Date(b.start_date).toISOString().substring(0, 16) : '');
+    setEndDate(b.end_date ? new Date(b.end_date).toISOString().substring(0, 16) : '');
+    setSlideshowTimer(b.slideshow_timer);
+    setEnabled(b.active);
     setIsModalOpen(true);
   };
 
@@ -61,14 +61,14 @@ export const BannerManager: React.FC = () => {
 
     saveBanner({
       id: editingBanner?.id,
-      imageUrl,
+      image_url: imageUrl,
       title,
-      redirectLink,
-      startDate: new Date(startDate).toISOString(),
-      endDate: new Date(endDate).toISOString(),
-      slideshowTimer: Number(slideshowTimer),
-      enabled,
-      order: editingBanner?.order || banners.length + 1
+      redirect_link: redirectLink,
+      start_date: new Date(startDate).toISOString(),
+      end_date: new Date(endDate).toISOString(),
+      slideshow_timer: Number(slideshowTimer),
+      active: enabled,
+      priority: editingBanner?.priority || banners.length + 1
     });
 
     setIsModalOpen(false);
@@ -99,10 +99,10 @@ export const BannerManager: React.FC = () => {
   };
 
   const getStatusText = (b: Banner): { text: string; color: string } => {
-    if (!b.enabled) return { text: 'Disabled', color: 'var(--text-muted)' };
+    if (!b.active) return { text: 'Disabled', color: 'var(--text-muted)' };
     const now = Date.now();
-    const start = new Date(b.startDate).getTime();
-    const end = new Date(b.endDate).getTime();
+    const start = b.start_date ? new Date(b.start_date).getTime() : 0;
+    const end = b.end_date ? new Date(b.end_date).getTime() : Infinity;
 
     if (now < start) return { text: 'Scheduled', color: 'var(--warning)' };
     if (now > end) return { text: 'Expired', color: 'var(--error)' };
@@ -131,7 +131,7 @@ export const BannerManager: React.FC = () => {
 
       {/* List Layout with Drag and Drop */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {banners.sort((a,b) => a.order - b.order).map((b, index) => {
+        {banners.sort((a,b) => a.priority - b.priority).map((b, index) => {
           const status = getStatusText(b);
           return (
             <div
@@ -164,12 +164,12 @@ export const BannerManager: React.FC = () => {
                 color: 'var(--text-muted)',
                 width: '24px'
               }}>
-                #{b.order}
+                #{b.priority}
               </div>
 
               {/* Image Preview */}
               <img 
-                src={b.imageUrl} 
+                src={b.image_url} 
                 alt={b.title} 
                 style={{
                   width: '90px',
@@ -184,7 +184,7 @@ export const BannerManager: React.FC = () => {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <strong style={{ fontSize: '14px', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}</strong>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Redirect Link: {b.redirectLink} • Display Timer: {b.slideshowTimer}s
+                  Redirect Link: {b.redirect_link} • Display Timer: {b.slideshow_timer}s
                 </span>
               </div>
 

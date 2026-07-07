@@ -5,12 +5,25 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 export const HeroCarousel: React.FC = () => {
   const { banners } = useApp();
   const activeBanners = banners.filter(b => {
-    if (!b.enabled) return false;
+    if (!b.active) return false;
     const now = new Date();
-    const start = new Date(b.startDate);
-    const end = new Date(b.endDate);
-    return now >= start && now <= end;
-  }).sort((a, b) => a.order - b.order);
+    
+    if (b.start_date) {
+      const start = new Date(b.start_date);
+      if (!isNaN(start.getTime()) && now < start) {
+        return false;
+      }
+    }
+    
+    if (b.end_date) {
+      const end = new Date(b.end_date);
+      if (!isNaN(end.getTime()) && now > end) {
+        return false;
+      }
+    }
+    
+    return true;
+  }).sort((a, b) => a.priority - b.priority);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const timerRef = useRef<any>(null);
@@ -23,7 +36,7 @@ export const HeroCarousel: React.FC = () => {
     if (activeBanners.length === 0) return;
 
     const currentBanner = activeBanners[currentIndex];
-    const duration = (currentBanner?.slideshowTimer || 5) * 1000;
+    const duration = (currentBanner?.slideshow_timer || 5) * 1000;
 
     timerRef.current = setInterval(() => {
       setCurrentIndex(prevIndex => (prevIndex + 1) % activeBanners.length);
@@ -38,7 +51,30 @@ export const HeroCarousel: React.FC = () => {
   }, [currentIndex, activeBanners.length]);
 
   if (activeBanners.length === 0) {
-    return null; // Don't show carousel if no active banners
+    return (
+      <div 
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '240px',
+          overflow: 'hidden',
+          borderRadius: '20px',
+          margin: '20px 0',
+          boxShadow: 'var(--glass-shadow)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1px solid var(--border-color)',
+          color: 'var(--text-muted)'
+        }}
+      >
+        <span style={{ fontSize: '32px', marginBottom: '10px' }}>📱</span>
+        <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>Welcome to Sri Sai Mobiles</h3>
+        <p style={{ fontSize: '13px' }}>Explore premium smartphones and top quality accessories at unbeatable prices.</p>
+      </div>
+    );
   }
 
   const handlePrev = () => {
@@ -79,7 +115,7 @@ export const HeroCarousel: React.FC = () => {
         {activeBanners.map((banner) => (
           <a
             key={banner.id}
-            href={banner.redirectLink}
+            href={banner.redirect_link}
             style={{
               flex: '0 0 100%',
               width: '100%',
@@ -98,7 +134,7 @@ export const HeroCarousel: React.FC = () => {
             }} />
             
             <img 
-              src={banner.imageUrl} 
+              src={banner.image_url} 
               alt={banner.title} 
               style={{
                 width: '100%',

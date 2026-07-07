@@ -501,47 +501,47 @@ export const INITIAL_DEVICES: Device[] = [
 export const INITIAL_BANNERS: Banner[] = [
   {
     id: 'banner-iphone-15',
-    imageUrl: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=1200&auto=format&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=1200&auto=format&fit=crop',
     title: 'iPhone 15 Pro Series Available Now',
-    redirectLink: '#product/apple-iphone-15-pro-max',
-    startDate: new Date().toISOString(),
-    endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-    slideshowTimer: 5,
-    enabled: true,
-    order: 1
+    redirect_link: '#product/apple-iphone-15-pro-max',
+    start_date: new Date().toISOString(),
+    end_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+    slideshow_timer: 5,
+    active: true,
+    priority: 1
   },
   {
     id: 'banner-s24-ultra',
-    imageUrl: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?q=80&w=1200&auto=format&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?q=80&w=1200&auto=format&fit=crop',
     title: 'Experience Galaxy AI on S24 Ultra',
-    redirectLink: '#product/samsung-galaxy-s24-ultra',
-    startDate: new Date().toISOString(),
-    endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-    slideshowTimer: 5,
-    enabled: true,
-    order: 2
+    redirect_link: '#product/samsung-galaxy-s24-ultra',
+    start_date: new Date().toISOString(),
+    end_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+    slideshow_timer: 5,
+    active: true,
+    priority: 2
   },
   {
     id: 'banner-festival-sale',
-    imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deceeaf7?q=80&w=1200&auto=format&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1540959733332-eab4deceeaf7?q=80&w=1200&auto=format&fit=crop',
     title: 'Festival Mobiles Bonanza - Up to 20% Off',
-    redirectLink: '#filter?offers=Bank Offer',
-    startDate: new Date().toISOString(),
-    endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    slideshowTimer: 5,
-    enabled: true,
-    order: 3
+    redirect_link: '#filter?offers=Bank Offer',
+    start_date: new Date().toISOString(),
+    end_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    slideshow_timer: 5,
+    active: true,
+    priority: 3
   },
   {
     id: 'banner-exchange',
-    imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=1200&auto=format&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=1200&auto=format&fit=crop',
     title: 'Instant Exchange & No Cost EMI Deals',
-    redirectLink: '#filter?offers=No Cost EMI',
-    startDate: new Date().toISOString(),
-    endDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
-    slideshowTimer: 5,
-    enabled: true,
-    order: 4
+    redirect_link: '#filter?offers=No Cost EMI',
+    start_date: new Date().toISOString(),
+    end_date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
+    slideshow_timer: 5,
+    active: true,
+    priority: 4
   }
 ];
 
