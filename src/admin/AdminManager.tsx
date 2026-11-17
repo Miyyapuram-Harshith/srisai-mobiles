@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { AdminUser } from '../types';
 import { Plus, ToggleLeft, ToggleRight, Trash, Mail, UserCheck, ShieldAlert, Save } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api-client';
 
 export const AdminManager: React.FC = () => {
   const { admins, currentUser, showToast, registerUnsavedChanges, refetchAdmins } = useApp();
@@ -119,33 +119,20 @@ export const AdminManager: React.FC = () => {
     setError(null);
     setSuccess(null);
     try {
-      // 1. Delete removed admins from Supabase
+      // 1. Delete removed admins
       for (const email of deletedAdminEmails) {
-        const { error } = await supabase.from('users').delete().eq('email', email);
-        if (error) throw error;
+        await api.delete(`/api/users/${encodeURIComponent(email)}`);
       }
       
-      // 2. Insert/Update local admins in Supabase
+      // 2. Insert/Update local admins
       for (const local of localAdmins) {
         const dbRole = local.enabled ? local.role : 'disabled_manager';
-        
-        const exists = admins.some(x => x.email.toLowerCase() === local.email.toLowerCase());
-        if (!exists) {
-          const { error } = await supabase.from('users').insert({
-            email: local.email.toLowerCase(),
-            name: local.name,
-            role: dbRole,
-            enabled: local.enabled
-          });
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from('users').update({
-            name: local.name,
-            role: dbRole,
-            enabled: local.enabled
-          }).eq('email', local.email.toLowerCase());
-          if (error) throw error;
-        }
+        await api.post('/api/users', {
+          email: local.email.toLowerCase(),
+          name: local.name,
+          role: dbRole,
+          enabled: local.enabled
+        });
       }
       
       await refetchAdmins();

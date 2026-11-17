@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Order, OrderStatus, Address } from '../types';
-import { supabase, mapOrderToDbOrder } from '../lib/supabase';
+import { mapOrderToDbOrder } from '../lib/mappers';
+import { api } from '../lib/api-client';
 import { 
   Search, Copy, Check, Eye, Trash2, ArrowUpDown, ChevronLeft, ChevronRight, 
   Download, Printer, Send, MessageCircle, FileText, Landmark, Clock, UserPlus, 
@@ -151,8 +152,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ defaultFilter }) => 
       
       for (const o of modifiedOrders) {
         const dbOrder = mapOrderToDbOrder(o);
-        const { error } = await supabase.from('orders').update(dbOrder).eq('id', o.id);
-        if (error) throw error;
+        await api.put(`/api/orders/${encodeURIComponent(o.id)}`, dbOrder);
       }
       
       await refetchOrders();

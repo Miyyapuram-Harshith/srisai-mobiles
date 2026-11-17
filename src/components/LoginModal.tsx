@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { generateOTP, verifyOTP, logLoginAttempt } from '../utils/authService';
 import { X, Mail, Key, ShieldCheck, ShieldAlert, Sparkles } from 'lucide-react';
 import { PermissionRole } from '../types';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api-client';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -119,25 +119,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
       let name = 'Customer';
 
       try {
-        const { data: userRecord, error: fetchError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', cleanEmail)
-          .single();
-
-        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+        const users = await api.get<any[]>(`/api/users?email=${encodeURIComponent(cleanEmail)}`);
+        const userRecord = users && users.length > 0 ? users[0] : null;
 
         if (userRecord) {
           role = userRecord.role as PermissionRole;
           name = role === 'customer' ? 'Customer' : (adminMatch ? adminMatch.name : 'Administrator');
         } else {
-          // Register new customer in Supabase user table
+          // Register new customer in user table
           role = adminMatch ? adminMatch.role : 'customer';
           name = adminMatch ? adminMatch.name : 'Customer';
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert({ email: cleanEmail, role });
-          if (insertError) throw insertError;
+          await api.post('/api/users', { email: cleanEmail, role, name });
         }
 
         if (adminMatch && !adminMatch.enabled) {
@@ -146,7 +138,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           return;
         }
       } catch (err) {
-        console.error('Failed to resolve role or register user in Supabase:', err);
+        console.error('Failed to resolve role or register user:', err);
       }
 
       // Complete Session

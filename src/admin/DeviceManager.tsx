@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Device, Specifications, DeviceType } from '../types';
-import { supabase, mapDeviceToDbProduct } from '../lib/supabase';
+import { mapDeviceToDbProduct } from '../lib/mappers';
+import { api } from '../lib/api-client';
 import { 
   Plus, Edit2, Copy, Archive, Trash2, X, 
   Smartphone, Tag, AlertTriangle, Layers, Save, CheckSquare, Square 
@@ -86,10 +87,9 @@ export const DeviceManager: React.FC = () => {
   const handleSaveChanges = async () => {
     setSaveStatus('saving');
     try {
-      // 1. Delete removed devices from Supabase
+      // 1. Delete removed devices
       for (const id of deletedDeviceIds) {
-        const { error } = await supabase.from('products').delete().eq('id', id);
-        if (error) throw error;
+        await api.delete(`/api/products/${encodeURIComponent(id)}`);
       }
       
       // 2. Save/insert/update local devices
@@ -99,11 +99,9 @@ export const DeviceManager: React.FC = () => {
         
         const exists = devices.some(x => x.id === d.id);
         if (!exists || d.id.includes('-copy-') || d.id.includes('-temp-')) {
-          const { error } = await supabase.from('products').insert(dbProduct);
-          if (error) throw error;
+          await api.post('/api/products', dbProduct);
         } else {
-          const { error } = await supabase.from('products').update(dbProduct).eq('id', d.id);
-          if (error) throw error;
+          await api.put(`/api/products/${encodeURIComponent(d.id)}`, dbProduct);
         }
       }
       

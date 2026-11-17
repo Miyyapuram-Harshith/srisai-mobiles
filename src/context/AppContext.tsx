@@ -7,8 +7,8 @@ import {
 } from '../types';
 import { INITIAL_DEVICES, INITIAL_BANNERS, INITIAL_FLASH_SALES, INITIAL_ADMINS, INITIAL_ORDERS, INITIAL_ACCESSORIES } from '../utils/seedData';
 import { checkPincodeServiceability, getEstimatedDateString } from '../utils/pincodeService';
+import { api } from '../lib/api-client';
 import { 
-  supabase, 
   mapDbProductToDevice, 
   mapDeviceToDbProduct, 
   mapDbBannerToBanner, 
@@ -19,7 +19,7 @@ import {
   mapAccessoryToDbAccessory,
   mapDbFlashSaleToFlashSale,
   mapFlashSaleToDbFlashSale
-} from '../lib/supabase';
+} from '../lib/mappers';
 
 interface AppContextType {
   dbLoading: boolean;
@@ -372,28 +372,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Individual Table Fetchers / Refetchers
   const refetchProducts = async () => {
-    const { data, error } = await supabase.from('products').select('*');
-    if (error) throw error;
-    setDevices((data || []).map(mapDbProductToDevice));
+    const products = await api.get<unknown[]>('/api/products');
+    setDevices(products.map(mapDbProductToDevice));
   };
 
   const refetchBanners = async () => {
-    const { data, error } = await supabase.from('banners').select('*');
-    if (error) throw error;
+    const data = await api.get<any[]>('/api/banners');
     setBanners((data || []).map(mapDbBannerToBanner).sort((a, b) => a.priority - b.priority));
   };
 
   const refetchOrders = async () => {
-    const { data, error } = await supabase.from('orders').select('*');
-    if (error) throw error;
+    const data = await api.get<any[]>('/api/orders');
     setOrders((data || []).map(mapDbOrderToOrder).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()));
   };
 
   const refetchAdmins = async () => {
-    const { data, error } = await supabase.from('users').select('*');
-    if (error) throw error;
+    const data = await api.get<any[]>('/api/users?role=admin_staff');
     const fetched = (data || [])
-      .filter((u: any) => u.role !== 'customer')
       .map((u: any) => ({
         email: u.email,
         name: u.name || 'Administrator',
@@ -405,28 +400,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const refetchFlashSales = async () => {
-    const { data, error } = await supabase.from('flash_sales').select('*');
-    if (error) throw error;
+    const data = await api.get<any[]>('/api/flash-sales');
     setFlashSales((data || []).map(mapDbFlashSaleToFlashSale));
   };
 
   const refetchAccessories = async () => {
-    const { data, error } = await supabase.from('accessories').select('*');
-    if (error) throw error;
+    const data = await api.get<any[]>('/api/accessories');
     setAccessories((data || []).map(mapDbAccessoryToAccessory));
   };
 
   const refetchSettings = async () => {
-    const { data, error } = await supabase.from('settings').select('*');
-    if (error) throw error;
-    let storeInfo = data?.[0] || {
-      store_name: 'Sri Sai Mobiles',
-      store_address: 'Opposite Big C, Angadi Bazar, Jagtial, Telangana - 505327',
-      store_phone: '+91 8688303048',
-      whatsapp_number: '8688303048',
-      default_greeting: 'Welcome to Sri Sai Mobiles Jagtial! How can we assist you today?'
-    };
-    
+    const storeInfo = await api.get<any>('/api/settings');
     setStoreSettingsState({
       storeName: storeInfo.store_name,
       storeAddress: storeInfo.store_address,
@@ -445,8 +429,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refetchInstagram = async () => {
     try {
-      const { data, error } = await supabase.from('instagram_posts').select('*');
-      if (error) throw error;
+      const data = await api.get<any[]>('/api/instagram-posts');
       const mapped = (data || []).map((d: any) => ({
         id: d.id,
         url: d.url,
@@ -466,76 +449,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setInstagramPosts(mapped);
       sessionStorage.setItem('srisai_instagram_posts', JSON.stringify(mapped));
     } catch (err) {
-      console.warn("instagram_posts table missing or query failed. Falling back to local state.", err);
+      console.warn("instagram_posts query failed. Falling back to local state.", err);
       const saved = sessionStorage.getItem('srisai_instagram_posts');
       if (saved) setInstagramPosts(JSON.parse(saved));
     }
   };
 
-  // 1. Seed & Load DB on mount
+  // 1. Load DB on mount
   const loadInitialData = async () => {
     try {
       setDbLoading(true);
       setDbError(null);
-
-      // Verify seeding condition for products
-      let { data: pData } = await supabase.from('products').select('id').limit(1);
-      if (!pData || pData.length === 0) {
-        const seeds = INITIAL_DEVICES.map(mapDeviceToDbProduct);
-        await supabase.from('products').insert(seeds);
-      }
-
-      // Verify seeding condition for banners
-      let { data: bData } = await supabase.from('banners').select('id').limit(1);
-      if (!bData || bData.length === 0) {
-        const seeds = INITIAL_BANNERS.map(mapBannerToDbBanner);
-        await supabase.from('banners').insert(seeds);
-      }
-
-      // Verify seeding condition for orders
-      let { data: oData } = await supabase.from('orders').select('id').limit(1);
-      if (!oData || oData.length === 0) {
-        const seeds = INITIAL_ORDERS.map(mapOrderToDbOrder);
-        await supabase.from('orders').insert(seeds);
-      }
-
-      // Verify seeding condition for users
-      let { data: uData } = await supabase.from('users').select('id').limit(1);
-      if (!uData || uData.length === 0) {
-        const adminUsers = INITIAL_ADMINS.map(adm => ({
-          email: adm.email.toLowerCase(),
-          role: adm.role
-        }));
-        await supabase.from('users').insert(adminUsers);
-      }
-
-      // Verify seeding condition for settings
-      let { data: sData } = await supabase.from('settings').select('id').limit(1);
-      if (!sData || sData.length === 0) {
-        const seedSetting = {
-          id: 'ac000000-0000-0000-0000-000000000001',
-          store_name: 'Sri Sai Mobiles',
-          store_address: 'Opposite Big C, Angadi Bazar, Jagtial, Telangana - 505327',
-          store_phone: '+91 8688303048',
-          whatsapp_number: '8688303048',
-          default_greeting: 'Welcome to Sri Sai Mobiles Jagtial! How can we assist you today?'
-        };
-        await supabase.from('settings').insert(seedSetting);
-      }
-
-      // Verify seeding condition for flash sales
-      let { data: fsData } = await supabase.from('flash_sales').select('id').limit(1);
-      if (!fsData || fsData.length === 0) {
-        const seeds = INITIAL_FLASH_SALES.map(mapFlashSaleToDbFlashSale);
-        await supabase.from('flash_sales').insert(seeds);
-      }
-
-      // Verify seeding condition for accessories
-      let { data: accData } = await supabase.from('accessories').select('id').limit(1);
-      if (!accData || accData.length === 0) {
-        const seeds = INITIAL_ACCESSORIES.map(mapAccessoryToDbAccessory);
-        await supabase.from('accessories').insert(seeds);
-      }
 
       // Execute refetches in parallel
       await Promise.all([
@@ -550,8 +474,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]);
 
     } catch (err: any) {
-      console.error('Error seeding/fetching database:', err);
-      setDbError(err.message || 'Failed to connect to Supabase database');
+      console.error('Error fetching API data:', err);
+      setDbError(err.message || 'Failed to connect to API');
       if (devices.length === 0) setDevices(INITIAL_DEVICES);
       if (banners.length === 0) setBanners(INITIAL_BANNERS);
     } finally {
@@ -589,107 +513,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [hasAnyUnsavedChanges]);
 
-  // 2. Realtime Listeners
-  useEffect(() => {
-    const productsChannel = supabase
-      .channel('products-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const newDevice = mapDbProductToDevice(payload.new);
-          setDevices(prev => {
-            if (prev.some(d => d.id === newDevice.id)) return prev;
-            return [...prev, newDevice];
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          const updatedDevice = mapDbProductToDevice(payload.new);
-          setDevices(prev => prev.map(d => d.id === updatedDevice.id ? updatedDevice : d));
-        } else if (payload.eventType === 'DELETE') {
-          setDevices(prev => prev.filter(d => d.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    const bannersChannel = supabase
-      .channel('banners-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'banners' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const newBanner = mapDbBannerToBanner(payload.new);
-          setBanners(prev => {
-            if (prev.some(b => b.id === newBanner.id)) return prev;
-            return [...prev, newBanner].sort((a, b) => a.priority - b.priority);
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          const updatedBanner = mapDbBannerToBanner(payload.new);
-          setBanners(prev => prev.map(b => b.id === updatedBanner.id ? updatedBanner : b).sort((a, b) => a.priority - b.priority));
-        } else if (payload.eventType === 'DELETE') {
-          setBanners(prev => prev.filter(b => b.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    const ordersChannel = supabase
-      .channel('orders-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const newOrder = mapDbOrderToOrder(payload.new);
-          setOrders(prev => {
-            if (prev.some(o => o.id === newOrder.id)) return prev;
-            return [newOrder, ...prev];
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          const updatedOrder = mapDbOrderToOrder(payload.new);
-          setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
-        } else if (payload.eventType === 'DELETE') {
-          setOrders(prev => prev.filter(o => o.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    const flashSalesChannel = supabase
-      .channel('flash-sales-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'flash_sales' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const newSale = mapDbFlashSaleToFlashSale(payload.new);
-          setFlashSales(prev => {
-            if (prev.some(fs => fs.id === newSale.id)) return prev;
-            return [...prev, newSale];
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          const updatedSale = mapDbFlashSaleToFlashSale(payload.new);
-          setFlashSales(prev => prev.map(fs => fs.id === updatedSale.id ? updatedSale : fs));
-        } else if (payload.eventType === 'DELETE') {
-          setFlashSales(prev => prev.filter(fs => fs.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    const accessoriesChannel = supabase
-      .channel('accessories-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'accessories' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const newAcc = mapDbAccessoryToAccessory(payload.new);
-          setAccessories(prev => {
-            if (prev.some(a => a.id === newAcc.id)) return prev;
-            return [...prev, newAcc];
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          const updatedAcc = mapDbAccessoryToAccessory(payload.new);
-          setAccessories(prev => prev.map(a => a.id === updatedAcc.id ? updatedAcc : a));
-        } else if (payload.eventType === 'DELETE') {
-          setAccessories(prev => prev.filter(a => a.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(productsChannel);
-      supabase.removeChannel(bannersChannel);
-      supabase.removeChannel(ordersChannel);
-      supabase.removeChannel(flashSalesChannel);
-      supabase.removeChannel(accessoriesChannel);
-    };
-  }, []);
-
   // 3. User Profile Loading (when logged in)
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -701,34 +524,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
       try {
-        // Resolve user UUID from email
-        const { data: userRecord, error } = await supabase
-          .from('users')
-          .select('id')
-          .eq('email', currentUser.email.toLowerCase())
-          .single();
-
-        if (error && error.code !== 'PGRST116') throw error;
-
-        if (!userRecord) {
-          // User not in DB yet — insert them
-          const { data: inserted } = await supabase
-            .from('users')
-            .insert({ email: currentUser.email.toLowerCase(), role: currentUser.role, name: currentUser.name || '' })
-            .select('id')
-            .single();
-          if (inserted) setUserDbId(inserted.id);
-          return;
+        const users = await api.get<any[]>(`/api/users?email=${encodeURIComponent(currentUser.email.toLowerCase())}`);
+        let uid: string;
+        if (!users || users.length === 0) {
+          const inserted = await api.post<any>('/api/users', {
+            email: currentUser.email.toLowerCase(),
+            role: currentUser.role,
+            name: currentUser.name || ''
+          });
+          uid = inserted.id;
+        } else {
+          uid = users[0].id;
         }
 
-        const uid = userRecord.id;
         setUserDbId(uid);
 
         // Load cart from cart_items table
-        const { data: cartRows } = await supabase
-          .from('cart_items')
-          .select('item_id, quantity, selected_color')
-          .eq('user_id', uid);
+        const cartRows = await api.get<any[]>(`/api/cart?user_id=${encodeURIComponent(uid)}`);
         if (cartRows && cartRows.length > 0) {
           setCart(cartRows.map((r: any) => ({ deviceId: r.item_id, quantity: r.quantity, selectedColor: r.selected_color })));
         } else {
@@ -736,21 +548,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         // Load wishlist from wishlist table
-        const { data: wishRows } = await supabase
-          .from('wishlist')
-          .select('item_id')
-          .eq('user_id', uid);
-        if (wishRows && wishRows.length > 0) {
-          setWishlist(wishRows.map((r: any) => r.item_id));
-        } else {
-          setWishlist([]);
-        }
+        const wishRows = await api.get<string[]>(`/api/wishlist?user_id=${encodeURIComponent(uid)}`);
+        setWishlist(wishRows || []);
 
         // Load addresses from addresses table
-        const { data: addrRows } = await supabase
-          .from('addresses')
-          .select('*')
-          .eq('user_id', uid);
+        const addrRows = await api.get<any[]>(`/api/addresses?user_id=${encodeURIComponent(uid)}`);
         if (addrRows && addrRows.length > 0) {
           setAddresses(addrRows.map((r: any) => ({
             id: r.id,
@@ -764,13 +566,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             city: r.city,
             state: r.state,
             pincode: r.pincode,
-            isDefault: r.is_default,
+            isDefault: Boolean(r.is_default),
           })));
         } else {
           setAddresses([]);
         }
       } catch (err) {
-        console.error('Failed to load user profile from Supabase:', err);
+        console.error('Failed to load user profile from API:', err);
       }
     };
 
@@ -847,29 +649,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTheme(t => t === 'light' ? 'dark' : 'light');
   };
 
-  // Cart operations (write to Supabase cart_items table)
+  // Cart operations (write to cart_items table via API)
   const addToCart = (deviceId: string, color: string) => {
     setCart(prevCart => {
       const existing = prevCart.find(item => item.deviceId === deviceId && item.selectedColor === color);
+      const newQty = existing ? existing.quantity + 1 : 1;
+      if (userDbId) {
+        api.post('/api/cart', {
+          user_id: userDbId,
+          item_id: deviceId,
+          quantity: newQty,
+          selected_color: color
+        }).catch(err => console.error('Failed to sync cart:', err));
+      }
       if (existing) {
-        const newQty = existing.quantity + 1;
-        // Supabase: update quantity
-        if (userDbId) {
-          supabase.from('cart_items').update({ quantity: newQty })
-            .eq('user_id', userDbId).eq('item_id', deviceId).eq('selected_color', color)
-            .then();
-        }
         return prevCart.map(item => 
           (item.deviceId === deviceId && item.selectedColor === color)
             ? { ...item, quantity: newQty }
             : item
         );
-      }
-      // Supabase: insert new cart item
-      if (userDbId) {
-        supabase.from('cart_items').insert({
-          user_id: userDbId, item_id: deviceId, quantity: 1, selected_color: color
-        }).then();
       }
       return [...prevCart, { deviceId, selectedColor: color, quantity: 1 }];
     });
@@ -887,50 +685,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : item
       )
     );
-    // Supabase: update quantity
     if (userDbId) {
-      supabase.from('cart_items').update({ quantity: qty })
-        .eq('user_id', userDbId).eq('item_id', deviceId).eq('selected_color', color)
-        .then();
+      api.post('/api/cart', {
+        user_id: userDbId,
+        item_id: deviceId,
+        quantity: qty,
+        selected_color: color
+      }).catch(err => console.error('Failed to update cart qty:', err));
     }
   };
 
   const removeFromCart = (deviceId: string, color: string) => {
     setCart(prevCart => prevCart.filter(item => !(item.deviceId === deviceId && item.selectedColor === color)));
-    // Supabase: delete cart item
     if (userDbId) {
-      supabase.from('cart_items').delete()
-        .eq('user_id', userDbId).eq('item_id', deviceId).eq('selected_color', color)
-        .then();
+      api.delete(`/api/cart?user_id=${encodeURIComponent(userDbId)}&item_id=${encodeURIComponent(deviceId)}&selected_color=${encodeURIComponent(color)}`)
+        .catch(err => console.error('Failed to remove cart item:', err));
     }
   };
 
   const clearCart = () => {
     setCart([]);
-    // Supabase: delete all cart items for user
     if (userDbId) {
-      supabase.from('cart_items').delete().eq('user_id', userDbId).then();
+      api.delete(`/api/cart?user_id=${encodeURIComponent(userDbId)}`)
+        .catch(err => console.error('Failed to clear cart:', err));
     }
   };
 
-  // Wishlist operations (write to Supabase wishlist table)
+  // Wishlist operations (write to wishlist table via API)
   const toggleWishlist = (deviceId: string) => {
     setWishlist(prev => {
       const isInList = prev.includes(deviceId);
       if (isInList) {
-        // Supabase: delete from wishlist
         if (userDbId) {
-          supabase.from('wishlist').delete()
-            .eq('user_id', userDbId).eq('item_id', deviceId)
-            .then();
+          api.delete(`/api/wishlist?user_id=${encodeURIComponent(userDbId)}&item_id=${encodeURIComponent(deviceId)}`)
+            .catch(err => console.error('Failed to remove wishlist item:', err));
         }
         return prev.filter(id => id !== deviceId);
       } else {
-        // Supabase: insert into wishlist
         if (userDbId) {
-          supabase.from('wishlist').insert({
-            user_id: userDbId, item_id: deviceId
-          }).then();
+          api.post('/api/wishlist', {
+            user_id: userDbId,
+            item_id: deviceId
+          }).catch(err => console.error('Failed to add wishlist item:', err));
         }
         return [...prev, deviceId];
       }
@@ -949,7 +745,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setComparisonList(prev => prev.filter(id => id !== deviceId));
   };
 
-  // Address operations (write to Supabase addresses table)
+  // Address operations (write to addresses table via API)
   const addAddress = (addr: Omit<Address, 'id'>) => {
     const localId = `addr-${Date.now()}`;
     const newAddr: Address = { ...addr, id: localId };
@@ -958,10 +754,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       let updated = prev;
       if (newAddr.isDefault) {
         updated = prev.map(a => ({ ...a, isDefault: false }));
-        // Supabase: unset all defaults
-        if (userDbId) {
-          supabase.from('addresses').update({ is_default: false }).eq('user_id', userDbId).then();
-        }
       }
       const list = [...updated, newAddr];
       if (list.length === 1) {
@@ -974,9 +766,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSelectedAddress(newAddr);
     }
 
-    // Supabase: insert address row
     if (userDbId) {
-      supabase.from('addresses').insert({
+      api.post<any>('/api/addresses', {
         user_id: userDbId,
         full_name: addr.fullName,
         phone: addr.phone,
@@ -989,23 +780,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         state: addr.state,
         pincode: addr.pincode,
         is_default: addr.isDefault || addresses.length === 0,
-      }).select('id').single().then(({ data }) => {
-        // Update local address with the real UUID from DB
-        if (data) {
-          setAddresses(prev => prev.map(a => a.id === localId ? { ...a, id: data.id } : a));
+      }).then((saved) => {
+        if (saved && saved.id) {
+          setAddresses(prev => prev.map(a => a.id === localId ? { ...a, id: saved.id } : a));
           if (newAddr.isDefault || addresses.length === 0) {
-            setSelectedAddress(prev => prev && prev.id === localId ? { ...prev, id: data.id } : prev);
+            setSelectedAddress(prev => prev && prev.id === localId ? { ...prev, id: saved.id } : prev);
           }
         }
-      });
+      }).catch(err => console.error('Failed to save address:', err));
     }
   };
 
   const removeAddress = (id: string) => {
     setAddresses(prev => prev.filter(a => a.id !== id));
-    // Supabase: delete address row
     if (userDbId) {
-      supabase.from('addresses').delete().eq('id', id).then();
+      api.delete(`/api/addresses/${encodeURIComponent(id)}`)
+        .catch(err => console.error('Failed to delete address:', err));
     }
   };
 
@@ -1222,8 +1012,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Record the Order
     const dbOrder = mapOrderToDbOrder(newOrder);
-    supabase.from('orders').insert(dbOrder).then(({ error }) => {
-      if (error) console.error('Failed to save order to Supabase:', error);
+    api.post('/api/orders', dbOrder).catch((error) => {
+      console.error('Failed to save order to API:', error);
     });
 
     clearCart();
@@ -1479,8 +1269,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Edit
         const dbProduct = mapDeviceToDbProduct(deviceData);
         dbProduct.status = deviceData.stockCount > 0 ? 'available' : 'out_of_stock';
-        const { error } = await supabase.from('products').update(dbProduct).eq('id', deviceData.id);
-        if (error) throw error;
+        await api.put(`/api/products/${encodeURIComponent(deviceData.id)}`, dbProduct);
         addAuditLog(`Edited Smartphone Catalog Entry: ${deviceData.brand} ${deviceData.modelName}`, currentUser?.email || 'Admin');
       } else {
         // Add
@@ -1493,10 +1282,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status: deviceData.stockCount > 0 ? 'available' : 'out_of_stock'
         };
         const dbProduct = mapDeviceToDbProduct(newDevice);
-        const { error } = await supabase.from('products').insert(dbProduct);
-        if (error) throw error;
+        await api.post('/api/products', dbProduct);
         addAuditLog(`Added New Smartphone Catalog Entry: ${deviceData.brand} ${deviceData.modelName}`, currentUser?.email || 'Admin');
       }
+      await refetchProducts();
     } catch (err) {
       console.error('Failed to save device:', err);
       throw err;
@@ -1516,8 +1305,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sales: 0
       };
       const dbProduct = mapDeviceToDbProduct(dup);
-      const { error } = await supabase.from('products').insert(dbProduct);
-      if (error) throw error;
+      await api.post('/api/products', dbProduct);
+      await refetchProducts();
       addAuditLog(`Duplicated Smartphone Entry: ID ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to duplicate device:', err);
@@ -1527,9 +1316,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteDevice = async (id: string) => {
     try {
-      const { error } = await supabase.from('products').delete().eq('id', id);
-      if (error) throw error;
+      await api.delete(`/api/products/${encodeURIComponent(id)}`);
       setCart(prev => prev.filter(item => item.deviceId !== id));
+      await refetchProducts();
       addAuditLog(`Deleted Smartphone Entry: ID ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to delete device:', err);
@@ -1539,8 +1328,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const archiveDevice = async (id: string) => {
     try {
-      const { error } = await supabase.from('products').update({ status: 'archived' }).eq('id', id);
-      if (error) throw error;
+      await api.put(`/api/products/${encodeURIComponent(id)}`, { status: 'archived' });
+      await refetchProducts();
       addAuditLog(`Archived Smartphone Entry: ID ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to archive device:', err);
@@ -1553,8 +1342,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       if (bannerData.id) {
         const dbBanner = mapBannerToDbBanner(bannerData);
-        const { error } = await supabase.from('banners').update(dbBanner).eq('id', bannerData.id);
-        if (error) throw error;
+        await api.put(`/api/banners/${encodeURIComponent(bannerData.id)}`, dbBanner);
         addAuditLog(`Edited Banner Entry: ${bannerData.title}`, currentUser?.email || 'Admin');
       } else {
         const id = `banner-${Date.now()}`;
@@ -1564,10 +1352,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           priority: banners.length + 1
         };
         const dbBanner = mapBannerToDbBanner(newBanner);
-        const { error } = await supabase.from('banners').insert(dbBanner);
-        if (error) throw error;
+        await api.post('/api/banners', dbBanner);
         addAuditLog(`Added New Banner Entry: ${bannerData.title}`, currentUser?.email || 'Admin');
       }
+      await refetchBanners();
     } catch (err) {
       console.error('Failed to save banner:', err);
       throw err;
@@ -1576,8 +1364,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteBanner = async (id: string) => {
     try {
-      const { error } = await supabase.from('banners').delete().eq('id', id);
-      if (error) throw error;
+      await api.delete(`/api/banners/${encodeURIComponent(id)}`);
+      await refetchBanners();
       addAuditLog(`Deleted Banner ID: ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to delete banner:', err);
@@ -1594,8 +1382,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         active: b.active,
         priority: idx + 1
       }));
-      const { error } = await supabase.from('banners').upsert(updates);
-      if (error) throw error;
+      await api.post('/api/banners', updates);
+      await refetchBanners();
       addAuditLog(`Reordered Banners Display Sequence`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to reorder banners:', err);
@@ -1608,8 +1396,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       if (saleData.id) {
         const dbSale = mapFlashSaleToDbFlashSale(saleData);
-        const { error } = await supabase.from('flash_sales').update(dbSale).eq('id', saleData.id);
-        if (error) throw error;
+        await api.put(`/api/flash-sales/${encodeURIComponent(saleData.id)}`, dbSale);
         setFlashSales(prev => prev.map(fs => fs.id === saleData.id ? { ...fs, ...saleData } as FlashSale : fs));
         addAuditLog(`Edited Flash Sale ID: ${saleData.id}`, currentUser?.email || 'Admin');
       } else {
@@ -1620,11 +1407,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           soldCount: 0
         };
         const dbSale = mapFlashSaleToDbFlashSale(newSale);
-        const { error } = await supabase.from('flash_sales').insert(dbSale);
-        if (error) throw error;
+        await api.post('/api/flash-sales', dbSale);
         setFlashSales(prev => [...prev, newSale]);
         addAuditLog(`Added New Flash Sale Entry`, currentUser?.email || 'Admin');
       }
+      await refetchFlashSales();
     } catch (err) {
       console.error('Failed to save flash sale:', err);
       throw err;
@@ -1633,9 +1420,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteFlashSale = async (id: string) => {
     try {
-      const { error } = await supabase.from('flash_sales').delete().eq('id', id);
-      if (error) throw error;
+      await api.delete(`/api/flash-sales/${encodeURIComponent(id)}`);
       setFlashSales(prev => prev.filter(fs => fs.id !== id));
+      await refetchFlashSales();
       addAuditLog(`Deleted Flash Sale Entry ID: ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to delete flash sale:', err);
@@ -1649,8 +1436,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (accessoryData.id) {
         const dbAcc = mapAccessoryToDbAccessory(accessoryData);
         dbAcc.status = accessoryData.stockCount > 0 ? 'available' : 'out_of_stock';
-        const { error } = await supabase.from('accessories').update(dbAcc).eq('id', accessoryData.id);
-        if (error) throw error;
+        await api.put(`/api/accessories/${encodeURIComponent(accessoryData.id)}`, dbAcc);
         setAccessories(prev => 
           prev.map(a => a.id === accessoryData.id 
             ? { 
@@ -1673,11 +1459,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           createdAt: new Date().toISOString()
         };
         const dbAcc = mapAccessoryToDbAccessory(newAccessory);
-        const { error } = await supabase.from('accessories').insert(dbAcc);
-        if (error) throw error;
+        await api.post('/api/accessories', dbAcc);
         setAccessories(prev => [...prev, newAccessory]);
         addAuditLog(`Added New Accessory: ${accessoryData.name}`, currentUser?.email || 'Admin');
       }
+      await refetchAccessories();
     } catch (err) {
       console.error('Failed to save accessory:', err);
       throw err;
@@ -1686,10 +1472,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteAccessory = async (id: string) => {
     try {
-      const { error } = await supabase.from('accessories').delete().eq('id', id);
-      if (error) throw error;
+      await api.delete(`/api/accessories/${encodeURIComponent(id)}`);
       setAccessories(prev => prev.filter(a => a.id !== id));
       setCart(prev => prev.filter(item => item.deviceId !== id));
+      await refetchAccessories();
       addAuditLog(`Deleted Accessory Entry ID: ${id}`, currentUser?.email || 'Admin');
     } catch (err) {
       console.error('Failed to delete accessory:', err);
@@ -1740,7 +1526,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     instagram: InstagramSettings
   ) => {
     try {
-      const { error } = await supabase.from('settings').update({
+      await api.put('/api/settings', {
         store_name: store.storeName,
         store_address: store.storeAddress,
         store_phone: store.storePhone,
@@ -1748,20 +1534,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         default_greeting: store.defaultGreeting,
         whatsapp_settings: whatsapp,
         instagram_settings: instagram
-      }).eq('id', 'ac000000-0000-0000-0000-000000000001');
-
-      if (error) {
-        console.warn("Failed to save settings with JSON fields, attempting fallback basic settings save:", error.message);
-        const { error: fallbackError } = await supabase.from('settings').update({
-          store_name: store.storeName,
-          store_address: store.storeAddress,
-          store_phone: store.storePhone,
-          whatsapp_number: store.whatsappNumber,
-          default_greeting: store.defaultGreeting
-        }).eq('id', 'ac000000-0000-0000-0000-000000000001');
-        
-        if (fallbackError) throw fallbackError;
-      }
+      });
       
       setStoreSettingsState(store);
       setWhatsAppSettings(whatsapp);
@@ -1780,31 +1553,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const saveInstagramPostsList = async (postsList: InstagramPost[]) => {
     try {
-      const { error: delError } = await supabase.from('instagram_posts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      if (delError) {
-        console.warn("Could not delete from instagram_posts table, trying direct insert/upsert:", delError.message);
-      }
+      const rows = postsList.map(p => ({
+        id: p.id,
+        url: p.url,
+        type: p.type,
+        thumbnail_url: p.thumbnailUrl,
+        custom_title: p.customTitle || null,
+        custom_description: p.customDescription || null,
+        display_order: p.displayOrder,
+        is_featured: p.isFeatured,
+        is_active: p.isActive,
+        position: p.position || 'middle',
+        expiry_date: p.expiryDate || null,
+        views: p.views || 0,
+        clicks: p.clicks || 0
+      }));
       
-      if (postsList.length > 0) {
-        const rows = postsList.map(p => ({
-          url: p.url,
-          type: p.type,
-          thumbnail_url: p.thumbnailUrl,
-          custom_title: p.customTitle || null,
-          custom_description: p.customDescription || null,
-          display_order: p.displayOrder,
-          is_featured: p.isFeatured,
-          is_active: p.isActive,
-          position: p.position || 'middle',
-          expiry_date: p.expiryDate || null,
-          views: p.views || 0,
-          clicks: p.clicks || 0
-        }));
-        
-        const { error: insError } = await supabase.from('instagram_posts').insert(rows);
-        if (insError) throw insError;
-      }
-      
+      await api.put('/api/instagram-posts', rows);
       await refetchInstagram();
       showToast("Instagram feed saved successfully!", "success");
     } catch (err: any) {

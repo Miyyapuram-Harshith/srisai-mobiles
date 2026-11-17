@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { InstagramPost, InstagramSettings } from '../types';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api-client';
 import { 
   Plus, Trash2, Edit, Eye, EyeOff, Star, ExternalLink, 
   Image, GripVertical, Camera, X, Check, Upload,
@@ -308,16 +308,12 @@ export const InstagramManager: React.FC = () => {
   const handleSaveChanges = async () => {
     setSaveStatus('saving');
     try {
-      const { data: sData } = await supabase.from('settings').select('*');
-      const storeInfo = sData?.[0] || {};
-      const { error: sError } = await supabase.from('settings').update({
+      await api.put('/api/settings', {
         instagram_settings: currentSettingsObj
-      }).eq('id', storeInfo.id || 'ac000000-0000-0000-0000-000000000001');
-      if (sError) throw sError;
+      });
 
       for (const id of deletedPostIds) {
-        const { error } = await supabase.from('instagram_posts').delete().eq('id', id);
-        if (error) throw error;
+        await api.delete(`/api/instagram-posts/${encodeURIComponent(id)}`);
       }
 
       for (const p of localPosts) {
@@ -337,11 +333,9 @@ export const InstagramManager: React.FC = () => {
         };
         
         if (p.id.startsWith('ig-temp-')) {
-          const { error } = await supabase.from('instagram_posts').insert(dbPost);
-          if (error) throw error;
+          await api.post('/api/instagram-posts', dbPost);
         } else {
-          const { error } = await supabase.from('instagram_posts').update(dbPost).eq('id', p.id);
-          if (error) throw error;
+          await api.put(`/api/instagram-posts/${encodeURIComponent(p.id)}`, dbPost);
         }
       }
 

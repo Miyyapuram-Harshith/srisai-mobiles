@@ -1,32 +1,69 @@
-# React + TypeScript + Vite
+# Sri Sai Mobiles — Cloudflare Architecture
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Production-grade e-commerce application powered by Cloudflare's edge platform.
 
-Currently, two official plugins are available:
+## Architecture
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend**: React 19 + TypeScript + Vite, served via **Cloudflare Pages**.
+- **Backend API**: Serverless edge endpoints in `functions/api/*` running on **Cloudflare Pages Functions**.
+- **Database**: Relational SQLite database on **Cloudflare D1** (`DB` binding).
+- **Object Storage**: Media and asset storage on **Cloudflare R2** (`STORAGE` binding).
+- **Authentication**: Passwordless OTP authentication with session persistence.
 
-## React Compiler
+## Project Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+├── db/
+│   ├── migrations/          # D1 SQL Schema migrations (tracked by Wrangler)
+│   └── seed/                # Initial seed data for products, categories, banners
+├── functions/               # Cloudflare Pages Functions (Edge API)
+│   ├── _shared/             # Shared DB helpers, response formats, error classes
+│   └── api/                 # REST endpoints
+│       ├── products/        # Products CRUD
+│       ├── categories.ts    # Categories listing
+│       ├── banners/         # Banners CRUD
+│       ├── accessories/     # Accessories CRUD
+│       ├── orders/          # Orders management
+│       ├── flash-sales/     # Flash deals & campaigns
+│       ├── settings/        # Store & communication settings
+│       ├── instagram-posts/ # Instagram feed management
+│       ├── users/           # Users and staff admin accounts
+│       ├── cart/            # Customer cart operations
+│       ├── wishlist/        # Customer wishlist operations
+│       ├── addresses/       # Customer delivery addresses
+│       ├── upload.ts        # R2 file upload endpoint
+│       └── storage/         # R2 object streaming endpoint
+├── src/                     # React application source
+└── wrangler.toml            # Cloudflare Pages, D1, and R2 configuration
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Local Development
+
+### 1. Install Dependencies
+```bash
+npm install
+```
+
+### 2. Run Local D1 Migrations and Seeds
+```bash
+npm run db:migrate:local
+npm run db:seed:local
+```
+
+### 3. Start Development Server
+```bash
+# Vite frontend dev server (fast HMR)
+npm run dev
+
+# Or full Cloudflare Pages Functions simulation with Wrangler:
+npm run pages:dev
+```
+
+### 4. Build & Verify
+```bash
+# Typecheck and build frontend
+npm run build
+
+# Compile Pages Functions worker
+npm run pages:build
+```

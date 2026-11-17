@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Banner } from '../types';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api-client';
 import { Plus, Trash, X, Calendar, Sliders, Play, Save, GripVertical } from 'lucide-react';
 
 export const BannerManager: React.FC = () => {
@@ -131,10 +131,9 @@ export const BannerManager: React.FC = () => {
   const handleSaveChanges = async () => {
     setSaveStatus('saving');
     try {
-      // 1. Delete removed banners from Supabase
+      // 1. Delete removed banners
       for (const id of deletedBannerIds) {
-        const { error } = await supabase.from('banners').delete().eq('id', id);
-        if (error) throw error;
+        await api.delete(`/api/banners/${encodeURIComponent(id)}`);
       }
       
       // 2. Save/insert/update local banners
@@ -152,11 +151,9 @@ export const BannerManager: React.FC = () => {
         };
         
         if (b.id.startsWith('banner-temp-')) {
-          const { error } = await supabase.from('banners').insert(dbBanner);
-          if (error) throw error;
+          await api.post('/api/banners', dbBanner);
         } else {
-          const { error } = await supabase.from('banners').update(dbBanner).eq('id', b.id);
-          if (error) throw error;
+          await api.put(`/api/banners/${encodeURIComponent(b.id)}`, dbBanner);
         }
       }
       

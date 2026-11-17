@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { FlashSale } from '../types';
 import { Plus, Trash, X, Calendar, Flame, AlertCircle, Save } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api-client';
 
 export const FlashSaleManager: React.FC = () => {
   const { flashSales, devices, showToast, registerUnsavedChanges, refetchFlashSales } = useApp();
@@ -137,8 +137,7 @@ export const FlashSaleManager: React.FC = () => {
     try {
       // 1. Delete
       for (const id of deletedSaleIds) {
-        const { error } = await supabase.from('flash_sales').delete().eq('id', id);
-        if (error) throw error;
+        await api.delete(`/api/flash-sales/${encodeURIComponent(id)}`);
       }
       
       // 2. Insert/Update
@@ -154,11 +153,9 @@ export const FlashSaleManager: React.FC = () => {
         };
         
         if (fs.id.startsWith('fs-temp-')) {
-          const { error } = await supabase.from('flash_sales').insert(dbSale);
-          if (error) throw error;
+          await api.post('/api/flash-sales', dbSale);
         } else {
-          const { error } = await supabase.from('flash_sales').update(dbSale).eq('id', fs.id);
-          if (error) throw error;
+          await api.put(`/api/flash-sales/${encodeURIComponent(fs.id)}`, dbSale);
         }
       }
       

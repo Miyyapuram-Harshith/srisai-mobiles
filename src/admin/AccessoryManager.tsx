@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Accessory } from '../types';
-import { supabase, mapAccessoryToDbAccessory } from '../lib/supabase';
+import { mapAccessoryToDbAccessory } from '../lib/mappers';
+import { api } from '../lib/api-client';
 import { 
   Plus, Edit2, Copy, Trash2, X, Tag, AlertTriangle, 
   Layers, Save, CheckSquare, Square, Eye, EyeOff, Upload, Search, Laptop, Smartphone
@@ -67,10 +68,9 @@ export const AccessoryManager: React.FC = () => {
   const handleSaveChanges = async () => {
     setSaveStatus('saving');
     try {
-      // 1. Delete removed accessories from Supabase
+      // 1. Delete removed accessories
       for (const id of deletedAccessoryIds) {
-        const { error } = await supabase.from('accessories').delete().eq('id', id);
-        if (error) throw error;
+        await api.delete(`/api/accessories/${encodeURIComponent(id)}`);
       }
       
       // 2. Save/insert/update local accessories
@@ -80,11 +80,9 @@ export const AccessoryManager: React.FC = () => {
         
         const exists = accessories.some(x => x.id === a.id);
         if (!exists || a.id.includes('-temp-') || a.id.startsWith('acc-temp-')) {
-          const { error } = await supabase.from('accessories').insert(dbAcc);
-          if (error) throw error;
+          await api.post('/api/accessories', dbAcc);
         } else {
-          const { error } = await supabase.from('accessories').update(dbAcc).eq('id', a.id);
-          if (error) throw error;
+          await api.put(`/api/accessories/${encodeURIComponent(a.id)}`, dbAcc);
         }
       }
       
