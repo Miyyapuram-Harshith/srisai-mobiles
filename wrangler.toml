@@ -1,0 +1,56 @@
+name = "srisai-mobiles"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-03-20"
+
+# Note: Cloudflare Pages projects can use wrangler.toml to define bindings.
+# Do NOT hardcode your personal Account ID here. 
+# Wrangler will use the account you are logged into or the CLOUDFLARE_ACCOUNT_ID environment variable.
+
+# --------------------------------------------------------------------------------
+# DEFAULT ENVIRONMENT (Development / Preview)
+# --------------------------------------------------------------------------------
+# These bindings are used for `wrangler pages dev` and branch deployments (preview).
+# They should point to your personal Cloudflare account's development resources.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "srisai_db_dev"
+database_id = "ac376cb7-7552-4f1f-8291-8e943ee5255b"
+migrations_dir = "db/migrations"
+
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "srisai-storage-dev"
+# Optionally, preview_bucket_name can be used for local dev
+# preview_bucket_name = "srisai-storage-dev-preview"
+
+[vars]
+ENVIRONMENT = "development"
+# Use TEST mode APIs in development
+RAZORPAY_MODE = "TEST"
+# The actual keys (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, OTP_SECRET, etc.) 
+# should be set as secrets via the Cloudflare Dashboard or `.dev.vars` locally.
+# DO NOT commit secrets to this file!
+
+# --------------------------------------------------------------------------------
+# PRODUCTION ENVIRONMENT
+# --------------------------------------------------------------------------------
+# These bindings are used for the main production branch deployments.
+# They should point to the Client's production Cloudflare account resources.
+
+[env.production]
+# Variables for Production
+[env.production.vars]
+ENVIRONMENT = "production"
+RAZORPAY_MODE = "LIVE"
+# Secrets like production API keys will be set securely in the Cloudflare Dashboard.
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "srisai_db_prod"
+database_id = "PROD_D1_DATABASE_ID_HERE"
+migrations_dir = "db/migrations"
+
+[[env.production.r2_buckets]]
+binding = "STORAGE"
+bucket_name = "srisai-storage-prod"

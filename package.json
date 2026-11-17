@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pages:dev": "wrangler pages dev --live-reload",
+    "pages:build": "npm run build && wrangler pages functions build",
+    "db:migrate:local": "wrangler d1 migrations apply srisai_db_dev --local",
+    "db:migrate:remote": "wrangler d1 migrations apply srisai_db_dev --remote",
+    "db:seed:local": "wrangler d1 execute srisai_db_dev --local --file=./db/seed/0001_initial_data.sql && wrangler d1 execute srisai_db_dev --local --file=./db/seed/0002_categories.sql"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
@@ -22,6 +27,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "wrangler": "^4.145.0"
   }
 }
