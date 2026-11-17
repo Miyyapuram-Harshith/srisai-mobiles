@@ -16,9 +16,10 @@ database_name = "srisai_db_dev"
 database_id = "ac376cb7-7552-4f1f-8291-8e943ee5255b"
 migrations_dir = "db/migrations"
 
-[[r2_buckets]]
-binding = "STORAGE"
-bucket_name = "srisai-storage-dev"
+# Optional R2 Object Storage (Uncomment once created in Cloudflare dashboard)
+# [[r2_buckets]]
+# binding = "STORAGE"
+# bucket_name = "srisai-storage-dev"
 
 [vars]
 ENVIRONMENT = "production"

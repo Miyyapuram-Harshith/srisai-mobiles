@@ -16,6 +16,10 @@ export const onRequestOptions: PagesFunction<Env> = async () => {
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
+    if (!context.env.STORAGE) {
+      return errorResponse('R2 Storage bucket is not configured yet', 'STORAGE_NOT_CONFIGURED', 503);
+    }
+
     const rawKey = context.params.key;
     const key = Array.isArray(rawKey) ? rawKey.join('/') : (rawKey as string);
 
