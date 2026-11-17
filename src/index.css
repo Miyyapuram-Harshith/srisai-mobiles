@@ -765,6 +765,16 @@ svg {
   width: 100%;
 }
 
+/* Mobile-first touch targets and accessibility */
+@media (max-width: 640px) {
+  button, .premium-btn, a[role="button"], input[type="button"], input[type="submit"] {
+    min-height: 40px;
+  }
+  .input-field {
+    min-height: 42px;
+  }
+}
+
 
 
 
