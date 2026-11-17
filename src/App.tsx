@@ -815,13 +815,23 @@ export const App: React.FC = () => {
     return 0; // default/featured
   });
 
+  // Helper to ensure valid Instagram URL for redirection
+  const getInstagramRedirectUrl = (rawUrl?: string) => {
+    if (!rawUrl || !rawUrl.trim()) return 'https://www.instagram.com/sri_sai_mobiles3048/';
+    const clean = rawUrl.trim();
+    if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+    return `https://${clean}`;
+  };
+
   // Dynamic Instagram Feed Component
   const InstagramFeed: React.FC<{ position: 'top' | 'middle' | 'bottom' | 'offers' | 'featured' }> = ({ position }) => {
     const showSection = instagramSettings.showSection;
 
     const activePosts = instagramPosts.filter(post => {
-      const matchPos = post.position === position;
-      const isActive = post.isActive;
+      const matchPos = position === 'featured'
+        ? (post.position === 'featured' || Boolean(post.isFeatured))
+        : (post.position === position);
+      const isActive = post.isActive === undefined ? true : Boolean(post.isActive);
       const isNotExpired = !post.expiryDate || new Date(post.expiryDate) >= new Date();
       return matchPos && isActive && isNotExpired;
     });
@@ -839,16 +849,22 @@ export const App: React.FC = () => {
     if (!showSection) return null;
     if (activePosts.length === 0) return null;
 
+    const sectionTitle = position === 'featured' 
+      ? '🌟 Featured Instagram Highlights' 
+      : instagramSettings.sectionTitle;
+
     return (
       <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '30px', paddingBottom: '10px' }}>
         {instagramSettings.showSectionTitle && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <h2 style={{ fontSize: '20px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Instagram size={20} style={{ color: '#E1306C' }} />
-                <span>{instagramSettings.sectionTitle}</span>
+                <span>{sectionTitle}</span>
               </h2>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>{instagramSettings.sectionSubtitle}</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                {position === 'featured' ? 'Trending reels and posts handpicked by Sri Sai Mobiles' : instagramSettings.sectionSubtitle}
+              </p>
             </div>
             {instagramSettings.showFollowButton && (
               <a 
@@ -866,20 +882,11 @@ export const App: React.FC = () => {
         )}
 
         {instagramSettings.layout === 'carousel' ? (
-          <div 
-            style={{ 
-              display: 'flex', 
-              overflowX: 'auto', 
-              gap: '16px', 
-              paddingBottom: '12px',
-              scrollbarWidth: 'thin'
-            }}
-            className="carousel-container"
-          >
+          <div className="instagram-posts-carousel">
             {postsToShow.map(post => (
               <a 
                 key={post.id}
-                href={post.url}
+                href={getInstagramRedirectUrl(post.url)}
                 onClick={() => trackInstagramPostClick(post.id)}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -905,37 +912,33 @@ export const App: React.FC = () => {
                   if (overlay) overlay.style.opacity = '0';
                 }}
               >
-                <img src={post.thumbnailUrl} alt={post.customTitle || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={post.thumbnailUrl} alt={post.customTitle || 'Instagram Post'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <div 
                   className="post-overlay"
                   style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.65)',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    opacity: 0, transition: 'opacity 0.2s', gap: '10px', color: 'white', fontSize: '13px', fontWeight: 'bold'
+                    opacity: 0, transition: 'opacity 0.2s', gap: '8px', color: 'white', fontSize: '12px', fontWeight: 'bold', padding: '12px'
                   }}
                 >
-                  <span style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.8, letterSpacing: '1px', textAlign: 'center', padding: '0 4px' }}>
-                    {post.customTitle || 'Unboxing & Review'}
+                  <span style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.9, letterSpacing: '0.5px', textAlign: 'center' }}>
+                    {post.customTitle || (post.type === 'reel' ? 'Watch Reel' : 'View Post')}
                   </span>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <Instagram size={14} fill="white" />
-                    <span>Watch Now</span>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', backgroundColor: '#E1306C', padding: '4px 10px', borderRadius: '12px', fontSize: '11px' }}>
+                    <Instagram size={12} fill="white" />
+                    <span>Open on Instagram ↗</span>
                   </div>
                 </div>
               </a>
             ))}
           </div>
         ) : (
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
-            gap: '16px' 
-          }}>
+          <div className="instagram-posts-grid">
             {postsToShow.map(post => (
               <a 
                 key={post.id}
-                href={post.url}
+                href={getInstagramRedirectUrl(post.url)}
                 onClick={() => trackInstagramPostClick(post.id)}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -959,22 +962,22 @@ export const App: React.FC = () => {
                   if (overlay) overlay.style.opacity = '0';
                 }}
               >
-                <img src={post.thumbnailUrl} alt={post.customTitle || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={post.thumbnailUrl} alt={post.customTitle || 'Instagram Post'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <div 
                   className="post-overlay"
                   style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.65)',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    opacity: 0, transition: 'opacity 0.2s', gap: '10px', color: 'white', fontSize: '13px', fontWeight: 'bold'
+                    opacity: 0, transition: 'opacity 0.2s', gap: '8px', color: 'white', fontSize: '12px', fontWeight: 'bold', padding: '12px'
                   }}
                 >
-                  <span style={{ fontSize: '10px', textTransform: 'uppercase', opacity: 0.8, letterSpacing: '1px', textAlign: 'center', padding: '0 4px' }}>
-                    {post.customTitle || 'Unboxing & Review'}
+                  <span style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.9, letterSpacing: '0.5px', textAlign: 'center' }}>
+                    {post.customTitle || (post.type === 'reel' ? 'Watch Reel' : 'View Post')}
                   </span>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <Instagram size={14} fill="white" />
-                    <span>Watch Now</span>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', backgroundColor: '#E1306C', padding: '4px 10px', borderRadius: '12px', fontSize: '11px' }}>
+                    <Instagram size={12} fill="white" />
+                    <span>Open on Instagram ↗</span>
                   </div>
                 </div>
               </a>
@@ -1009,6 +1012,8 @@ export const App: React.FC = () => {
           <InstagramFeed position="top" />
           {/* Limited Time Countdown sales */}
           <FlashSaleSection />
+          {/* Instagram Feed (Featured Position) */}
+          <InstagramFeed position="featured" />
 
           {/* Mobile Filter & Sort Toolbar */}
           <div className="mobile-toolbar glass">

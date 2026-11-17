@@ -282,9 +282,33 @@ button, input, select, textarea {
 /* Viewport responsive columns and gaps */
 @media (max-width: 480px) {
   .grid-responsive {
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
   }
+}
+
+/* Instagram Feed Layout - Always Side-by-Side */
+.instagram-posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .instagram-posts-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+}
+
+.instagram-posts-carousel {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  gap: 14px;
+  padding-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
