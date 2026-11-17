@@ -28,8 +28,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     const bindings: any[] = [];
 
     if (email) {
-      conditions.push('customer_email = ?');
-      bindings.push(email);
+      conditions.push('(customer_email = ? OR user_id = (SELECT id FROM users WHERE LOWER(email) = LOWER(?)))');
+      bindings.push(email.toLowerCase().trim(), email.toLowerCase().trim());
     }
     if (phone) {
       conditions.push('phone = ?');

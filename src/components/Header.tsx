@@ -2,7 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Search, Moon, Sun, ShoppingCart, User, MapPin, 
-  GitCompare, Heart, LogOut, ShieldAlert, Menu, X
+  GitCompare, Heart, LogOut, ShieldAlert, Menu, X, Package
 } from 'lucide-react';
 
 const Instagram: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 20, style }) => (
@@ -29,10 +29,11 @@ interface HeaderProps {
   onOpenAddress: () => void;
   onOpenCompare: () => void;
   onOpenSearch: () => void;
+  onOpenCustomerOrders: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  onOpenCart, onOpenLogin, onOpenAddress, onOpenCompare, onOpenSearch
+  onOpenCart, onOpenLogin, onOpenAddress, onOpenCompare, onOpenSearch, onOpenCustomerOrders
 }) => {
   const { 
     theme, toggleTheme, currentUser, setCurrentUser, 
@@ -342,7 +343,24 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* User profile / Login dropdown */}
           {currentUser ? (
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }} className="user-profile-menu">
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '6px' }} className="user-profile-menu">
+              <button
+                onClick={onOpenCustomerOrders}
+                className="premium-btn btn-secondary"
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                title="View My Orders & Real-Time Tracking"
+              >
+                <Package size={14} style={{ color: 'var(--primary)' }} />
+                <span>My Orders</span>
+              </button>
+
               <button 
                 onClick={() => navigateTo(currentUser.role !== 'customer' ? 'admin' : 'home')}
                 className="premium-btn btn-secondary"
@@ -698,6 +716,14 @@ export const Header: React.FC<HeaderProps> = ({
                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{currentUser.role}</span>
                     </div>
                   </div>
+                  <button 
+                    onClick={() => { setIsMobileMenuOpen(false); onOpenCustomerOrders(); }}
+                    className="premium-btn btn-secondary"
+                    style={{ width: '100%', padding: '8px', borderRadius: '8px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <Package size={14} style={{ color: 'var(--primary)' }} />
+                    <span>My Orders & Tracking</span>
+                  </button>
                   {currentUser.role !== 'customer' && (
                     <button 
                       onClick={() => { setIsMobileMenuOpen(false); navigateTo('admin'); }}

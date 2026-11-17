@@ -10,6 +10,7 @@ import { SearchOverlay } from './components/SearchOverlay';
 import { AddressModal } from './components/AddressModal';
 import { CartDrawer } from './components/CartDrawer';
 import { LoginModal } from './components/LoginModal';
+import { CustomerOrdersModal } from './components/CustomerOrdersModal';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { ContactPage } from './components/ContactPage';
 import { AdminPortal } from './admin/AdminPortal';
@@ -48,6 +49,7 @@ export const App: React.FC = () => {
   // Modal States
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isCustomerOrdersOpen, setIsCustomerOrdersOpen] = useState(false);
   const [isAddressOpen, setIsAddressOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -1566,6 +1568,7 @@ export const App: React.FC = () => {
         <Header 
           onOpenCart={() => setIsCartOpen(true)}
           onOpenLogin={() => setIsLoginOpen(true)}
+          onOpenCustomerOrders={() => setIsCustomerOrdersOpen(true)}
           onOpenAddress={() => setIsAddressOpen(true)}
           onOpenCompare={() => setIsCompareOpen(true)}
           onOpenSearch={() => setIsSearchOpen(true)}
@@ -1649,6 +1652,11 @@ export const App: React.FC = () => {
       <LoginModal 
         isOpen={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
+      />
+
+      <CustomerOrdersModal 
+        isOpen={isCustomerOrdersOpen}
+        onClose={() => setIsCustomerOrdersOpen(false)}
       />
 
       <AddressModal 

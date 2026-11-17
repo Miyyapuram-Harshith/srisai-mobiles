@@ -59,7 +59,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ defaultFilter }) => 
           
           return {
             ...o,
-            orderStatus: status,
+            status,
             actualDeliveryDate,
             timeline: [
               ...o.timeline,
@@ -98,7 +98,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ defaultFilter }) => 
           const refundId = `SSM-REF-${Date.now().toString().slice(-6)}`;
           return {
             ...o,
-            orderStatus: 'refunded' as const,
+            status: 'refunded' as const,
             paymentStatus: 'refunded' as const,
             refundId,
             refundAmount: refundDetails.amount,
