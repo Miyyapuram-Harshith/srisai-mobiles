@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Address } from '../types';
 import { checkPincodeServiceability } from '../utils/pincodeService';
-import { X, MapPin, Plus, Check, Trash, Map } from 'lucide-react';
+import { X, MapPin, Plus, Trash, Map } from 'lucide-react';
 
 interface AddressModalProps {
   isOpen: boolean;

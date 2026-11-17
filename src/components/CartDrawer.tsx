@@ -15,7 +15,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   isOpen, onClose, onOpenLogin, onOpenAddress 
 }) => {
   const { 
-    cart, devices, accessories, updateCartQty, removeFromCart, selectedAddress, 
+    cart, devices, accessories, updateCartQty, removeFromCart, selectedAddress, setSelectedAddress,
     currentUser, createOrder, navigateTo, addresses, addAddress, storeSettings
   } = useApp();
 
@@ -581,7 +581,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                             return (
                               <div
                                 key={addr.id}
-                                onClick={() => useApp().setSelectedAddress(addr)}
+                                onClick={() => setSelectedAddress(addr)}
                                 style={{
                                   padding: '12px', border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
                                   borderRadius: '12px', backgroundColor: isSelected ? 'rgba(59,130,246,0.02)' : 'var(--bg-subtle)',

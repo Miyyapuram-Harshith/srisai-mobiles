@@ -3,7 +3,7 @@ import { Device } from '../types';
 import { useApp } from '../context/AppContext';
 import { 
   Heart, GitCompare, ShoppingCart, Smartphone, Cpu, 
-  Layers, Database, Battery, Camera, Check, Tag, Gift, AlertCircle, MessageCircle
+  Layers, Database, Battery, Camera, MessageCircle
 } from 'lucide-react';
 
 const Instagram: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 20, style }) => (

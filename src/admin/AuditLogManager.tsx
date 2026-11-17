@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { ShieldCheck, Search, Trash2, Calendar, Clock, Terminal } from 'lucide-react';
 
 export const AuditLogManager: React.FC = () => {
-  const { auditLogs, clearAuditLogs, adminRole, currentUser } = useApp();
+  const { auditLogs, clearAuditLogs, adminRole } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [adminFilter, setAdminFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('');

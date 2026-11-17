@@ -1,4 +1,4 @@
-import { Device, Banner, FlashSale, AdminUser, Order, Address } from '../types';
+import { Device, Banner, FlashSale, AdminUser, Order } from '../types';
 
 export const INITIAL_DEVICES: Device[] = [
   {

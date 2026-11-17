@@ -19,6 +19,26 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
   const device = devices.find(d => d.id === deviceId);
 
+  // State Management
+  const [activeImage, setActiveImage] = useState(device?.images?.[0] || 'logo.jpg');
+  const [selectedColor, setSelectedColor] = useState(device?.colors?.[0] || 'Default');
+  const [pincode, setPincode] = useState('');
+  const [pincodeResult, setPincodeResult] = useState<PincodeDetails | null>(null);
+  const [showVideo, setShowVideo] = useState(false);
+  const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({ display: 'none' });
+
+  useEffect(() => {
+    if (!device) return;
+    setActiveImage(device.images?.[0] || 'logo.jpg');
+    setSelectedColor(device.colors?.[0] || 'Default');
+    setPincodeResult(null);
+    setPincode('');
+    setShowVideo(false);
+    
+    incrementDeviceViews(device.id);
+    addRecentlyViewed(device.id);
+  }, [deviceId, device, incrementDeviceViews, addRecentlyViewed]);
+
   if (!device) {
     return (
       <div style={{ padding: '80px 20px', textAlign: 'center' }}>
@@ -27,25 +47,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
       </div>
     );
   }
-
-  // State Management
-  const [activeImage, setActiveImage] = useState(device.images[0] || 'logo.jpg');
-  const [selectedColor, setSelectedColor] = useState(device.colors[0] || 'Default');
-  const [pincode, setPincode] = useState('');
-  const [pincodeResult, setPincodeResult] = useState<PincodeDetails | null>(null);
-  const [showVideo, setShowVideo] = useState(false);
-  const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({ display: 'none' });
-
-  useEffect(() => {
-    setActiveImage(device.images[0] || 'logo.jpg');
-    setSelectedColor(device.colors[0] || 'Default');
-    setPincodeResult(null);
-    setPincode('');
-    setShowVideo(false);
-    
-    incrementDeviceViews(device.id);
-    addRecentlyViewed(device.id);
-  }, [deviceId, device.id]);
 
   const isWishlisted = wishlist.includes(device.id);
   const isCompared = comparisonList.includes(device.id);

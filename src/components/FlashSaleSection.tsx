@@ -9,7 +9,7 @@ interface FlashSaleCardProps {
 }
 
 const FlashSaleCard: React.FC<FlashSaleCardProps> = ({ sale, device }) => {
-  const { navigateTo, addToCart } = useApp();
+  const { navigateTo } = useApp();
   const [timeLeft, setTimeLeft] = useState('');
   const [isExpired, setIsExpired] = useState(false);
 

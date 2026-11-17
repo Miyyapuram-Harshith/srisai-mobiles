@@ -5,8 +5,8 @@ import { mapOrderToDbOrder } from '../lib/mappers';
 import { api } from '../lib/api-client';
 import { 
   Search, Copy, Check, Eye, Trash2, ArrowUpDown, ChevronLeft, ChevronRight, 
-  Download, Printer, Send, MessageCircle, FileText, Landmark, Clock, UserPlus, 
-  MapPin, PlusCircle, AlertCircle, Edit, DollarSign, ExternalLink, X
+  Download, Printer, Send, MessageCircle, FileText, Landmark, Clock, 
+  MapPin, DollarSign, ExternalLink, X
 } from 'lucide-react';
 
 interface OrderManagerProps {
@@ -184,7 +184,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ defaultFilter }) => 
   const [sortAsc, setSortAsc] = useState(false);
 
   // Table Column Widths (Simulation of Resizable Columns)
-  const [colWidths, setColWidths] = useState({
+  const [colWidths] = useState({
     id: 110,
     date: 110,
     customer: 140,
@@ -207,9 +207,6 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ defaultFilter }) => 
   const [noteInput, setNoteInput] = useState('');
   const [callDuration, setCallDuration] = useState('1m 00s');
   const [callSummary, setCallSummary] = useState('');
-
-  // Payment Screen capture simulation state
-  const [simulatedScreenshot, setSimulatedScreenshot] = useState<string | null>(null);
 
   // Delivery Executive updates
   const [devPartner, setDevPartner] = useState('');

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { MessageCircle, X, Check, Clock, HeartHandshake, PhoneCall, Smartphone } from 'lucide-react';
+import { MessageCircle, X, Clock, HeartHandshake, PhoneCall, Smartphone } from 'lucide-react';
 
 export const WhatsAppWidget: React.FC = () => {
   const { 
@@ -46,7 +46,7 @@ export const WhatsAppWidget: React.FC = () => {
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
       return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
-    } catch (e) {
+    } catch {
       return true; // Fallback to online
     }
   };
@@ -54,7 +54,7 @@ export const WhatsAppWidget: React.FC = () => {
   const isOnline = checkIsWorkingHours();
 
   // 2. RESOLVE CONTEXTUAL PRE-FILLED MESSAGES
-  const getContextMessage = (category: string): string => {
+  const getContextMessage = (_category?: string): string => {
     let template = whatsAppSettings.customGreeting || whatsAppSettings.generalTemplate;
     
     // If not customized, choose context-specific template

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { AdminUser } from '../types';
-import { Plus, ToggleLeft, ToggleRight, Trash, Mail, UserCheck, ShieldAlert, Save } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Trash, Mail, UserCheck, ShieldAlert } from 'lucide-react';
 import { api } from '../lib/api-client';
 
 export const AdminManager: React.FC = () => {
@@ -15,17 +15,6 @@ export const AdminManager: React.FC = () => {
   const [localAdmins, setLocalAdmins] = useState<AdminUser[]>([]);
   const [deletedAdminEmails, setDeletedAdminEmails] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved' | 'error'>('idle');
-
-  // Restrict access for non-superadmins in visual wrapper
-  if (currentUser?.role !== 'super_admin') {
-    return (
-      <div className="glass-card" style={{ padding: '30px', textAlign: 'center' }}>
-        <ShieldAlert size={48} style={{ color: 'var(--error)' }} />
-        <h3 style={{ fontSize: '18px', margin: '16px 0 8px 0' }}>Access Denied</h3>
-        <p style={{ color: 'var(--text-muted)' }}>Only Super Administrators can access admin account controls.</p>
-      </div>
-    );
-  }
 
   // Sync with context on load / save success
   useEffect(() => {
@@ -47,14 +36,25 @@ export const AdminManager: React.FC = () => {
       setSaveStatus('idle');
       registerUnsavedChanges('admins', false);
     }
-  }, [localAdmins, deletedAdminEmails, admins]);
+  }, [localAdmins, deletedAdminEmails, admins, registerUnsavedChanges]);
 
   // Unmount protection
   useEffect(() => {
     return () => {
       registerUnsavedChanges('admins', false);
     };
-  }, []);
+  }, [registerUnsavedChanges]);
+
+  // Restrict access for non-superadmins in visual wrapper
+  if (currentUser?.role !== 'super_admin') {
+    return (
+      <div className="glass-card" style={{ padding: '30px', textAlign: 'center' }}>
+        <ShieldAlert size={48} style={{ color: 'var(--error)' }} />
+        <h3 style={{ fontSize: '18px', margin: '16px 0 8px 0' }}>Access Denied</h3>
+        <p style={{ color: 'var(--text-muted)' }}>Only Super Administrators can access admin account controls.</p>
+      </div>
+    );
+  }
 
   const handleAddAdmin = (e: React.FormEvent) => {
     e.preventDefault();

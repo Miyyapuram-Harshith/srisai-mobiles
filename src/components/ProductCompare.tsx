@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Check, ArrowRight, GitCompare, Plus } from 'lucide-react';
+import { X, GitCompare, Plus } from 'lucide-react';
 
 interface ProductCompareProps {
   isOpen: boolean;
@@ -8,7 +8,7 @@ interface ProductCompareProps {
 }
 
 export const ProductCompare: React.FC<ProductCompareProps> = ({ isOpen, onClose }) => {
-  const { comparisonList, devices, removeFromCompare, addToCart, navigateTo } = useApp();
+  const { comparisonList, devices, removeFromCompare, navigateTo } = useApp();
 
   if (!isOpen) return null;
 
@@ -76,7 +76,7 @@ export const ProductCompare: React.FC<ProductCompareProps> = ({ isOpen, onClose 
     return false;
   };
 
-  const handleQuickBuy = (deviceId: string, color: string) => {
+  const handleQuickBuy = (deviceId: string, _color?: string) => {
     onClose();
     navigateTo(`product/${deviceId}`);
   };

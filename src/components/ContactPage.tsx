@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, MessageCircle, MapPin, Clock, Send, Compass, ExternalLink } from 'lucide-react';
+import { Phone, MessageCircle, MapPin, Clock, Send, Compass } from 'lucide-react';
 
 const Instagram: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 20, style }) => (
   <svg
@@ -21,9 +21,8 @@ const Instagram: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ s
 import { useApp } from '../context/AppContext';
 
 export const ContactPage: React.FC = () => {
-  const { whatsAppSettings, storeSettings } = useApp();
+  const { storeSettings } = useApp();
   const [distance, setDistance] = useState<number | null>(null);
-  const [locPermission, setLocPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
 
   // Sri Sai Mobiles coordinates
   const STORE_LAT = 18.7930915;
@@ -46,7 +45,6 @@ export const ContactPage: React.FC = () => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLocPermission('granted');
           const dist = calculateDistance(
             position.coords.latitude,
             position.coords.longitude,
@@ -56,7 +54,7 @@ export const ContactPage: React.FC = () => {
           setDistance(dist);
         },
         () => {
-          setLocPermission('denied');
+          // Geolocation declined or unavailable
         }
       );
     }
