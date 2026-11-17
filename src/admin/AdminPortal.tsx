@@ -48,7 +48,7 @@ export const AdminPortal: React.FC = () => {
   // Permissions path guard
   useEffect(() => {
     if (activeSubRoute === 'devices' || activeSubRoute === 'banners' || activeSubRoute === 'sales' || activeSubRoute === 'communications' || activeSubRoute === 'accessories' || activeSubRoute === 'instagram') {
-      if (adminRole !== 'super_admin' && adminRole !== 'manager') {
+      if (adminRole !== 'super_admin' && adminRole !== 'manager' && adminRole !== 'catalog_manager') {
         setActiveSubRoute('orders');
       }
     }
@@ -411,7 +411,7 @@ export const AdminPortal: React.FC = () => {
               }}
             >
               <Users size={18} />
-              <span>Manage Admins</span>
+              <span>Staff & Role Controls</span>
             </button>
           )}
 
@@ -436,7 +436,7 @@ export const AdminPortal: React.FC = () => {
               }}
             >
               <FileText size={18} />
-              <span>System Audit Logs</span>
+              <span>Employee Activity Tracking</span>
             </button>
           )}
 

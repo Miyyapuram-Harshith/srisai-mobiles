@@ -392,8 +392,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .map((u: any) => ({
         email: u.email,
         name: u.name || 'Administrator',
-        role: u.role === 'disabled_admin' ? 'admin' : (u.role === 'disabled_manager' ? 'manager' : u.role),
-        enabled: u.enabled ?? (u.role !== 'disabled_admin' && u.role !== 'disabled_manager'),
+        role: u.role?.startsWith('disabled_') ? u.role.replace('disabled_', '') : (u.role || 'manager'),
+        enabled: u.enabled ?? !u.role?.startsWith('disabled_'),
         dateAdded: u.created_at || new Date().toISOString()
       }));
     setAdmins(fetched.length > 0 ? fetched : INITIAL_ADMINS);

@@ -126,12 +126,20 @@ export interface FlashSale {
   enabled: boolean;
 }
 
-export type PermissionRole = 'super_admin' | 'manager' | 'sales_staff' | 'delivery_staff' | 'customer';
+export type PermissionRole = 
+  | 'super_admin' 
+  | 'manager' 
+  | 'order_manager' 
+  | 'catalog_manager' 
+  | 'sales_staff' 
+  | 'delivery_staff' 
+  | 'support_agent' 
+  | 'customer';
 
 export interface AdminUser {
   email: string;
   name: string;
-  role: 'super_admin' | 'manager' | 'sales_staff' | 'delivery_staff';
+  role: 'super_admin' | 'manager' | 'order_manager' | 'catalog_manager' | 'sales_staff' | 'delivery_staff' | 'support_agent';
   enabled: boolean;
   dateAdded: string;
 }
