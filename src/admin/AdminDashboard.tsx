@@ -1,29 +1,68 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   ShoppingBag, ShieldAlert, Award, TrendingUp, 
-  Smartphone, BarChart2, IndianRupee, Eye, DollarSign, Map, LogOut, Clock,
-  MessageCircle
+  Smartphone, BarChart2, IndianRupee, Eye, DollarSign, Map, Clock,
+  MessageCircle, RefreshCw, CheckCircle2, Truck, Package
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  const { devices, orders, auditLogs, whatsAppAnalytics } = useApp();
+  const { 
+    devices, accessories, orders, auditLogs, whatsAppAnalytics,
+    refetchOrders, refetchProducts, refetchAccessories, showToast 
+  } = useApp();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<string>(new Date().toLocaleTimeString('en-IN'));
+
+  // Auto-refresh real-time data on mount
+  useEffect(() => {
+    handleRefresh(true);
+  }, []);
+
+  const handleRefresh = async (silent = false) => {
+    setIsRefreshing(true);
+    try {
+      await Promise.allSettled([
+        refetchOrders?.(),
+        refetchProducts?.(),
+        refetchAccessories?.()
+      ]);
+      setLastRefreshed(new Date().toLocaleTimeString('en-IN'));
+      if (!silent) {
+        showToast('Dashboard metrics refreshed from database!', 'success');
+      }
+    } catch (err: any) {
+      console.error('Failed to refresh dashboard:', err);
+      if (!silent) {
+        showToast('Failed to refresh live data: ' + err.message, 'error');
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Metrics Calculations
-  const totalProductsCount = devices.length;
+  const totalProductsCount = devices.length + (accessories?.length || 0);
   
-  // Calculate revenue from orders
+  // Real-time Revenue & Orders Calculations
   const todayDateStr = new Date().toISOString().split('T')[0];
-  const ordersToday = orders.filter(o => o.orderDate.startsWith(todayDateStr));
-  const revenueToday = ordersToday.reduce((acc, o) => acc + o.total, 0);
+  const validOrders = orders.filter(o => o.status !== 'cancelled');
+  const ordersToday = validOrders.filter(o => o.orderDate && o.orderDate.startsWith(todayDateStr));
+  const revenueToday = ordersToday.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
 
-  const totalRevenue = orders.reduce((acc, o) => acc + o.total, 0);
+  const totalRevenue = validOrders.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
 
   // Average Order Value (AOV)
-  const aov = orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0;
+  const aov = validOrders.length > 0 ? Math.round(totalRevenue / validOrders.length) : 0;
 
   // Refunded amount
-  const totalRefunded = orders.reduce((acc, o) => acc + (o.refundAmount || 0), 0);
+  const totalRefunded = orders.reduce((acc, o) => acc + (Number(o.refundAmount) || 0), 0);
+
+  // Status breakdown
+  const pendingOrders = orders.filter(o => o.status === 'pending');
+  const inTransitOrders = orders.filter(o => ['confirmed', 'packed', 'shipped', 'out_for_delivery'].includes(o.status));
+  const deliveredOrders = orders.filter(o => o.status === 'delivered');
 
   // Low stock warning list
   const lowStockProducts = devices.filter(d => d.stockCount <= 2 && d.status === 'available');
@@ -32,33 +71,51 @@ export const AdminDashboard: React.FC = () => {
   const mostViewed = [...devices].sort((a, b) => b.views - a.views).slice(0, 5);
   const bestSelling = [...devices].sort((a, b) => b.sales - a.sales).slice(0, 5);
 
-  // Top Cities list
+  // Top Purchasing Cities (Null-Safe)
   const cityCount = orders.reduce((acc: Record<string, number>, o) => {
-    const city = o.shippingAddress.city || 'Store Pickup';
+    let city = 'Store Pickup';
+    if (o.shippingAddress && typeof o.shippingAddress === 'object' && o.shippingAddress.city) {
+      city = o.shippingAddress.city;
+    } else if (o.deliveryType === 'home_delivery') {
+      city = 'Jagtial';
+    }
     acc[city] = (acc[city] || 0) + 1;
     return acc;
   }, {});
-  const topCities = Object.entries(cityCount).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const topCities = Object.entries(cityCount).sort((a, b) => b[1] - a[1]).slice(0, 4);
 
-  // Best Selling Brands list
+  // Best Selling Brands list (Null-Safe)
   const brandSales = orders.reduce((acc: Record<string, number>, o) => {
-    o.items.forEach(item => {
-      acc[item.brand] = (acc[item.brand] || 0) + item.quantity;
-    });
+    if (Array.isArray(o.items)) {
+      o.items.forEach(item => {
+        if (item && item.brand) {
+          acc[item.brand] = (acc[item.brand] || 0) + (Number(item.quantity) || 1);
+        }
+      });
+    }
     return acc;
   }, {});
-  const bestBrands = Object.entries(brandSales).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const bestBrands = Object.entries(brandSales).sort((a, b) => b[1] - a[1]).slice(0, 4);
 
-  // Weekly Graph Sales
-  const chartData = [
-    { day: 'Mon', revenue: totalRevenue > 0 ? Math.round(totalRevenue * 0.1) : 45000 },
-    { day: 'Tue', revenue: totalRevenue > 0 ? Math.round(totalRevenue * 0.12) : 62000 },
-    { day: 'Wed', revenue: totalRevenue > 0 ? Math.round(totalRevenue * 0.15) : 58000 },
-    { day: 'Thu', revenue: totalRevenue > 0 ? Math.round(totalRevenue * 0.18) : 95000 },
-    { day: 'Fri', revenue: totalRevenue > 0 ? Math.round(totalRevenue * 0.22) : 120000 },
-    { day: 'Sat', revenue: totalRevenue > 0 ? Math.round(totalRevenue * 0.13) : 145000 },
-    { day: 'Sun', revenue: totalRevenue > 0 ? Math.round(totalRevenue * 0.1) : 180000 + revenueToday }
-  ];
+  // 📈 REAL 7-DAY REVENUE CALCULATION
+  const now = new Date();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const chartData = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().split('T')[0];
+    const dayLabel = dayNames[d.getDay()];
+
+    const dayRevenue = orders
+      .filter(o => o.orderDate && o.orderDate.startsWith(dateStr) && o.status !== 'cancelled')
+      .reduce((acc, o) => acc + (Number(o.total) || 0), 0);
+
+    return {
+      day: dayLabel,
+      date: dateStr,
+      revenue: dayRevenue
+    };
+  });
 
   const chartWidth = 500;
   const chartHeight = 160;
@@ -76,20 +133,48 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
-      {/* Page Header */}
-      <div>
-        <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0 }}>SriSai Operations Dashboard</h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Real-time business intelligence, logistics updates, and diagnostic audit logs.</p>
+      {/* Page Header with Real-Time Refresh Button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span>SriSai Operations Dashboard</span>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+              LIVE
+            </span>
+          </h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+            Real-time business intelligence, live D1 order metrics, and diagnostic audit logs. (Last synced: {lastRefreshed})
+          </p>
+        </div>
+
+        <button
+          onClick={() => handleRefresh(false)}
+          disabled={isRefreshing}
+          className="premium-btn btn-secondary"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            borderRadius: '12px',
+            fontSize: '12px',
+            fontWeight: 700
+          }}
+        >
+          <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+          <span>{isRefreshing ? 'Refreshing...' : 'Sync Live Data'}</span>
+        </button>
       </div>
 
-      {/* 🚀 PRIMARY KPI GRID (Expanded with AOV & Refund metrics) */}
+      {/* 🚀 PRIMARY KPI GRID */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '16px'
       }}>
         
-        {/* Total revenue */}
+        {/* Total Revenue */}
         <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px' }}>
           <div style={{
             width: '42px', height: '42px', borderRadius: '10px',
@@ -104,37 +189,85 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Average Order Value (AOV) */}
+        {/* Today's Revenue */}
+        <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px' }}>
+          <div style={{
+            width: '42px', height: '42px', borderRadius: '10px',
+            backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b',
+            display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center'
+          }}>
+            <Clock size={20} />
+          </div>
+          <div>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>TODAY'S SALES ({ordersToday.length})</span>
+            <span style={{ fontSize: '20px', fontWeight: 800 }}>₹{revenueToday.toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+
+        {/* Total Orders */}
         <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px' }}>
           <div style={{
             width: '42px', height: '42px', borderRadius: '10px',
             backgroundColor: 'rgba(59, 130, 246, 0.12)', color: 'var(--primary)',
             display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center'
           }}>
+            <Package size={20} />
+          </div>
+          <div>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>TOTAL ORDERS</span>
+            <span style={{ fontSize: '20px', fontWeight: 800 }}>{orders.length}</span>
+          </div>
+        </div>
+
+        {/* Pending Orders */}
+        <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px' }}>
+          <div style={{
+            width: '42px', height: '42px', borderRadius: '10px',
+            backgroundColor: pendingOrders.length > 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+            color: pendingOrders.length > 0 ? 'var(--error)' : 'var(--success)',
+            display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center'
+          }}>
+            <ShoppingBag size={20} />
+          </div>
+          <div>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>PENDING ORDERS</span>
+            <span style={{ fontSize: '20px', fontWeight: 800, color: pendingOrders.length > 0 ? 'var(--error)' : 'inherit' }}>
+              {pendingOrders.length}
+            </span>
+          </div>
+        </div>
+
+        {/* In-Transit Orders */}
+        <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px' }}>
+          <div style={{
+            width: '42px', height: '42px', borderRadius: '10px',
+            backgroundColor: 'rgba(6, 182, 212, 0.12)', color: '#06b6d4',
+            display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center'
+          }}>
+            <Truck size={20} />
+          </div>
+          <div>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>IN DISPATCH / TRANSIT</span>
+            <span style={{ fontSize: '20px', fontWeight: 800 }}>{inTransitOrders.length}</span>
+          </div>
+        </div>
+
+        {/* Average Order Value (AOV) */}
+        <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px' }}>
+          <div style={{
+            width: '42px', height: '42px', borderRadius: '10px',
+            backgroundColor: 'rgba(139, 92, 246, 0.12)', color: '#8b5cf6',
+            display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center'
+          }}>
             <TrendingUp size={20} />
           </div>
           <div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>AVG. ORDER VALUE (AOV)</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>AVG. ORDER VALUE</span>
             <span style={{ fontSize: '20px', fontWeight: 800 }}>₹{aov.toLocaleString('en-IN')}</span>
           </div>
         </div>
 
-        {/* Refund Issued amount */}
-        <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px' }}>
-          <div style={{
-            width: '42px', height: '42px', borderRadius: '10px',
-            backgroundColor: 'rgba(239, 68, 68, 0.12)', color: 'var(--error)',
-            display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center'
-          }}>
-            <DollarSign size={20} />
-          </div>
-          <div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>REFUND AMOUNT ISSUED</span>
-            <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--error)' }}>₹{totalRefunded.toLocaleString('en-IN')}</span>
-          </div>
-        </div>
-
-        {/* Active Alerts */}
+        {/* Low Stock Alerts */}
         <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px' }}>
           <div style={{
             width: '42px', height: '42px', borderRadius: '10px',
@@ -152,7 +285,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* WhatsApp support clicks */}
+        {/* WhatsApp Support Clicks */}
         <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px' }}>
           <div style={{
             width: '42px', height: '42px', borderRadius: '10px',
@@ -162,30 +295,36 @@ export const AdminDashboard: React.FC = () => {
             <MessageCircle size={20} />
           </div>
           <div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>WHATSAPP SUPPORT CLICKS</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>WHATSAPP INQUIRIES</span>
             <span style={{ fontSize: '20px', fontWeight: 800 }}>{whatsAppAnalytics?.totalClicks || 0}</span>
           </div>
         </div>
 
       </div>
 
-      {/* 📊 WEEKLY CHART AND AUDIT FEED */}
+      {/* 📊 REAL 7-DAY SALES PERFORMANCE & AUDIT ACTIVITY FEED */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1.2fr 1fr',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
         gap: '20px'
       }}>
         
-        {/* Weekly line chart */}
+        {/* Real 7-day Line Chart */}
         <div className="glass-card" style={{ padding: '20px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <BarChart2 size={16} />
-            <span>Weekly Sales Performance (₹ Revenue Trend)</span>
-          </span>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
-              <line x1={padding} y1={padding} x2={chartWidth - padding} y2={padding} stroke="var(--border-color)" strokeWidth={0.5} />
-              <line x1={padding} y1={chartHeight / 2} x2={chartWidth - padding} y2={chartHeight / 2} stroke="var(--border-color)" strokeWidth={0.5} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BarChart2 size={16} style={{ color: 'var(--primary)' }} />
+              <span>Real 7-Day Revenue Trend</span>
+            </span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              Total 7D: ₹{chartData.reduce((acc, d) => acc + d.revenue, 0).toLocaleString('en-IN')}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', width: '100%', overflowX: 'auto' }}>
+            <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none">
+              <line x1={padding} y1={padding} x2={chartWidth - padding} y2={padding} stroke="var(--border-color)" strokeWidth={0.5} strokeDasharray="3 3" />
+              <line x1={padding} y1={chartHeight / 2} x2={chartWidth - padding} y2={chartHeight / 2} stroke="var(--border-color)" strokeWidth={0.5} strokeDasharray="3 3" />
               <line x1={padding} y1={chartHeight - padding} x2={chartWidth - padding} y2={chartHeight - padding} stroke="var(--border-color)" strokeWidth={1} />
               
               <polyline fill="none" stroke="var(--primary)" strokeWidth="3" points={points} />
@@ -195,9 +334,9 @@ export const AdminDashboard: React.FC = () => {
                 const y = chartHeight - padding - ((d.revenue / maxVal) * graphHeight);
                 return (
                   <g key={i}>
-                    <circle cx={x} cy={y} r="4" fill="var(--primary)" />
+                    <circle cx={x} cy={y} r="5" fill="var(--primary)" stroke="var(--card-bg)" strokeWidth="2" />
                     <text x={x} y={chartHeight - 4} fontSize="9" textAnchor="middle" fill="var(--text-muted)" fontWeight="600">{d.day}</text>
-                    <text x={x} y={y - 8} fontSize="8" textAnchor="middle" fill="var(--text-main)" fontWeight="bold">₹{Math.round(d.revenue / 1000)}k</text>
+                    <text x={x} y={Math.max(14, y - 8)} fontSize="8" textAnchor="middle" fill="var(--text-main)" fontWeight="bold">₹{Math.round(d.revenue / 1000)}k</text>
                   </g>
                 );
               })}
@@ -205,19 +344,23 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* 📋 LIVE AUDIT LOG ACTIVITY FEED */}
+        {/* 📋 LIVE AUDIT ACTIVITY FEED */}
         <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-            <Clock size={16} style={{ color: 'var(--primary)' }} />
-            <span>Live Audit Action Log Feed</span>
-          </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock size={16} style={{ color: 'var(--primary)' }} />
+              <span>Recent Operational Actions</span>
+            </span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{auditLogs?.length || 0} entries</span>
+          </div>
           
           <div style={{
-            display: 'flex', flexDirection: 'column', gap: '6px', 
-            overflowY: 'auto', flex: 1, maxHeight: '130px'
+            display: 'flex', flexDirection: 'column', gap: '8px', 
+            overflowY: 'auto', flex: 1, maxHeight: '140px',
+            scrollbarWidth: 'thin'
           }}>
             {auditLogs && auditLogs.length > 0 ? (
-              auditLogs.map((log) => (
+              auditLogs.slice(0, 10).map((log) => (
                 <div 
                   key={log.id}
                   style={{
@@ -236,12 +379,11 @@ export const AdminDashboard: React.FC = () => {
                     <span style={{ color: 'var(--text-muted)', fontSize: '9px' }}>{log.date} @ {log.time}</span>
                   </div>
                   <div style={{ color: 'var(--text-main)', marginTop: '2px' }}>{log.action}</div>
-                  <div style={{ fontSize: '9px', color: 'var(--text-muted)', alignSelf: 'flex-end' }}>IP: <code>{log.ipAddress}</code></div>
                 </div>
               ))
             ) : (
               <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '12px' }}>
-                No audit entries logged in this session.
+                No audit entries recorded in this session.
               </div>
             )}
           </div>
@@ -303,7 +445,7 @@ export const AdminDashboard: React.FC = () => {
             <span>Top Viewed Products</span>
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {mostViewed.slice(0, 3).map(d => (
+            {mostViewed.slice(0, 4).map(d => (
               <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>
                 <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>{d.modelName}</span>
                 <span style={{ color: 'var(--text-muted)' }}>{d.views} views</span>
