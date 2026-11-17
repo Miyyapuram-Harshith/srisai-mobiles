@@ -400,8 +400,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const refetchFlashSales = async () => {
-    const data = await api.get<any[]>('/api/flash-sales');
-    setFlashSales((data || []).map(mapDbFlashSaleToFlashSale));
+    try {
+      const data = await api.get<any[]>('/api/flash-sales');
+      if (data && data.length > 0) {
+        setFlashSales(data.map(mapDbFlashSaleToFlashSale));
+      } else {
+        setFlashSales(INITIAL_FLASH_SALES);
+      }
+    } catch {
+      setFlashSales(INITIAL_FLASH_SALES);
+    }
   };
 
   const refetchAccessories = async () => {

@@ -9,7 +9,7 @@ interface FlashSaleCardProps {
 }
 
 const FlashSaleCard: React.FC<FlashSaleCardProps> = ({ sale, device }) => {
-  const { navigateTo } = useApp();
+  const { navigateTo, addToCart, showToast } = useApp();
   const [timeLeft, setTimeLeft] = useState('');
   const [isExpired, setIsExpired] = useState(false);
 
@@ -20,8 +20,8 @@ const FlashSaleCard: React.FC<FlashSaleCardProps> = ({ sale, device }) => {
       const diff = end - now;
 
       if (diff <= 0) {
-        setTimeLeft('EXPIRED');
-        setIsExpired(true);
+        setTimeLeft('ENDED');
+        setIsExpired(false); // keep visible with ended label or renewal
         return;
       }
 
@@ -44,12 +44,18 @@ const FlashSaleCard: React.FC<FlashSaleCardProps> = ({ sale, device }) => {
 
   if (isExpired) return null;
 
+  const flashPrice = sale.discountPercentage > 0
+    ? Math.round(device.price * (1 - sale.discountPercentage / 100))
+    : device.offerPrice;
+
   const stockRemaining = Math.max(0, sale.stockLimit - sale.soldCount);
-  const percentSold = Math.round((sale.soldCount / sale.stockLimit) * 100);
+  const percentSold = sale.stockLimit > 0 ? Math.round((sale.soldCount / sale.stockLimit) * 100) : 50;
 
   const handleBuyNow = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigateTo(`product/${device.id}`);
+    const color = device.colors && device.colors.length > 0 ? device.colors[0] : 'Standard';
+    addToCart(device.id, color);
+    showToast(`Claimed deal for ${device.modelName}! Added to cart at ₹${flashPrice.toLocaleString('en-IN')}`, 'success');
   };
 
   return (
@@ -138,12 +144,15 @@ const FlashSaleCard: React.FC<FlashSaleCardProps> = ({ sale, device }) => {
         </h3>
 
         {/* Pricing */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--error)' }}>
-            ₹{device.offerPrice.toLocaleString('en-IN')}
+            ₹{flashPrice.toLocaleString('en-IN')}
           </span>
           <span style={{ fontSize: '14px', textDecoration: 'line-through', color: 'var(--text-muted)' }}>
             ₹{device.price.toLocaleString('en-IN')}
+          </span>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--success)', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+            {sale.discountPercentage}% OFF
           </span>
         </div>
 
@@ -192,9 +201,9 @@ export const FlashSaleSection: React.FC = () => {
   const activeSales = flashSales.filter(sale => {
     if (!sale.enabled) return false;
     const now = Date.now();
-    const start = new Date(sale.startTime).getTime();
     const end = new Date(sale.endTime).getTime();
-    return now >= start && now <= end && sale.soldCount < sale.stockLimit;
+    const isFuture = isNaN(end) || end > now;
+    return isFuture && (sale.soldCount < sale.stockLimit || sale.stockLimit === 0);
   });
 
   if (activeSales.length === 0) return null;

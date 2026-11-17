@@ -550,30 +550,30 @@ export const INITIAL_FLASH_SALES: FlashSale[] = [
     id: 'fs-nothing-2',
     deviceId: 'nothing-phone-2',
     discountPercentage: 24, // 49999 -> 37999
-    stockLimit: 5,
+    stockLimit: 10,
     soldCount: 3,
-    startTime: new Date().toISOString(),
-    endTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+    startTime: new Date(Date.now() - 3600000).toISOString(),
+    endTime: new Date(Date.now() + 48 * 3600000).toISOString(),
     enabled: true
   },
   {
     id: 'fs-oneplus-12',
     deviceId: 'oneplus-12',
     discountPercentage: 8, // 64999 -> 59999
-    stockLimit: 10,
+    stockLimit: 12,
     soldCount: 6,
-    startTime: new Date().toISOString(),
-    endTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+    startTime: new Date(Date.now() - 7200000).toISOString(),
+    endTime: new Date(Date.now() + 72 * 3600000).toISOString(),
     enabled: true
   },
   {
     id: 'fs-iphone-15',
     deviceId: 'apple-iphone-15-pro-max',
     discountPercentage: 7, // 159900 -> 148900
-    stockLimit: 3,
+    stockLimit: 5,
     soldCount: 2,
-    startTime: new Date().toISOString(),
-    endTime: new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString(),
+    startTime: new Date(Date.now() - 1800000).toISOString(),
+    endTime: new Date(Date.now() + 36 * 3600000).toISOString(),
     enabled: true
   }
 ];
