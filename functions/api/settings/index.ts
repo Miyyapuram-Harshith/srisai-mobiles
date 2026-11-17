@@ -12,6 +12,17 @@ interface Env {
   DB: D1Database;
 }
 
+const DEFAULT_SETTINGS = {
+  id: 'default',
+  store_name: 'Sri Sai Mobiles',
+  store_address: 'Opposite Big C, Angadi Bazar, Jagtial, Telangana - 505327',
+  store_phone: '+91 8688303048',
+  whatsapp_number: '8688303048',
+  default_greeting: 'Welcome to Sri Sai Mobiles Jagtial! How can we assist you today?',
+  whatsapp_settings: null,
+  instagram_settings: null,
+};
+
 export const onRequestOptions: PagesFunction<Env> = async () => {
   return handleCors();
 };
@@ -21,18 +32,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     let row = await context.env.DB.prepare('SELECT * FROM settings LIMIT 1').first();
     
     if (!row) {
-      // Return default configuration if empty
-      const defaultSettings = {
-        id: 'default',
-        store_name: 'Sri Sai Mobiles',
-        store_address: 'Opposite Big C, Angadi Bazar, Jagtial, Telangana - 505327',
-        store_phone: '+91 8688303048',
-        whatsapp_number: '8688303048',
-        default_greeting: 'Welcome to Sri Sai Mobiles Jagtial! How can we assist you today?',
-        whatsapp_settings: null,
-        instagram_settings: null,
-      };
-      return successResponse(defaultSettings);
+      // Auto-initialize row in database if empty
+      const { sql, values } = buildUpsertQuery('settings', DEFAULT_SETTINGS);
+      await context.env.DB.prepare(sql).bind(...values).run();
+      row = await context.env.DB.prepare('SELECT * FROM settings LIMIT 1').first();
     }
 
     return successResponse(parseJsonFields(row as Record<string, any>, 'settings'));
@@ -53,7 +56,12 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
       const { sql, values } = buildUpdateQuery('settings', existing.id, body);
       await context.env.DB.prepare(sql).bind(...values).run();
     } else {
-      const toInsert = { ...body, id: body.id || 'default' };
+      // If no row exists yet, merge incoming partial fields with DEFAULT_SETTINGS
+      const toInsert = {
+        ...DEFAULT_SETTINGS,
+        ...body,
+        id: body.id || 'default'
+      };
       const { sql, values } = buildUpsertQuery('settings', toInsert);
       await context.env.DB.prepare(sql).bind(...values).run();
     }
