@@ -821,8 +821,22 @@ export const App: React.FC = () => {
   const getInstagramRedirectUrl = (rawUrl?: string) => {
     if (!rawUrl || !rawUrl.trim()) return 'https://www.instagram.com/sri_sai_mobiles3048/';
     const clean = rawUrl.trim();
-    if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
-    return `https://${clean}`;
+    if (clean.startsWith('@')) {
+      return `https://www.instagram.com/${clean.slice(1)}/`;
+    }
+    if (clean.startsWith('/')) {
+      return `https://www.instagram.com${clean}`;
+    }
+    if (clean.startsWith('p/') || clean.startsWith('reel/') || clean.startsWith('reels/')) {
+      return `https://www.instagram.com/${clean}`;
+    }
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      if (clean.startsWith('instagram.com') || clean.startsWith('www.instagram.com')) {
+        return `https://${clean}`;
+      }
+      return `https://www.instagram.com/${clean}`;
+    }
+    return clean;
   };
 
   // Dynamic Instagram Feed Component
@@ -839,6 +853,7 @@ export const App: React.FC = () => {
     });
 
     const postsToShow = [...activePosts].sort((a, b) => a.displayOrder - b.displayOrder).slice(0, instagramSettings.postsCount);
+    const postIdsKey = postsToShow.map(p => p.id).join(',');
 
     useEffect(() => {
       if (showSection && postsToShow.length > 0) {
@@ -846,7 +861,7 @@ export const App: React.FC = () => {
           trackInstagramPostView(post.id);
         });
       }
-    }, [showSection, postsToShow.map(p => p.id).join(',')]);
+    }, [showSection, postIdsKey]);
 
     if (!showSection) return null;
     if (activePosts.length === 0) return null;
@@ -854,6 +869,15 @@ export const App: React.FC = () => {
     const sectionTitle = position === 'featured' 
       ? '🌟 Featured Instagram Highlights' 
       : instagramSettings.sectionTitle;
+
+    const handlePostClick = (e: React.MouseEvent<HTMLAnchorElement>, post: (typeof postsToShow)[0]) => {
+      trackInstagramPostClick(post.id);
+      const targetUrl = getInstagramRedirectUrl(post.url);
+      if (targetUrl) {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+        e.preventDefault();
+      }
+    };
 
     return (
       <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '30px', paddingBottom: '10px' }}>
@@ -889,10 +913,11 @@ export const App: React.FC = () => {
               <a 
                 key={post.id}
                 href={getInstagramRedirectUrl(post.url)}
-                onClick={() => trackInstagramPostClick(post.id)}
+                onClick={(e) => handlePostClick(e, post)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="glass-card"
+                title={post.customTitle || 'Open on Instagram'}
                 style={{ 
                   position: 'relative', 
                   borderRadius: '12px', 
@@ -914,14 +939,45 @@ export const App: React.FC = () => {
                   if (overlay) overlay.style.opacity = '0';
                 }}
               >
-                <img src={post.thumbnailUrl} alt={post.customTitle || 'Instagram Post'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img 
+                  src={post.thumbnailUrl} 
+                  alt={post.customTitle || 'Instagram Post'} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} 
+                />
+                
+                {/* Always-visible badge for mobile touch awareness */}
+                <div 
+                  style={{
+                    position: 'absolute',
+                    bottom: '8px',
+                    left: '8px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+                    backdropFilter: 'blur(4px)',
+                    borderRadius: '20px',
+                    padding: '3px 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    color: 'white',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    zIndex: 2,
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <Instagram size={10} fill="#E1306C" style={{ color: '#E1306C' }} />
+                  <span>{post.type === 'reel' ? 'Reel ↗' : 'Post ↗'}</span>
+                </div>
+
                 <div 
                   className="post-overlay"
                   style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                     backgroundColor: 'rgba(0, 0, 0, 0.65)',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    opacity: 0, transition: 'opacity 0.2s', gap: '8px', color: 'white', fontSize: '12px', fontWeight: 'bold', padding: '12px'
+                    opacity: 0, transition: 'opacity 0.2s', gap: '8px', color: 'white', fontSize: '12px', fontWeight: 'bold', padding: '12px',
+                    pointerEvents: 'none',
+                    zIndex: 3
                   }}
                 >
                   <span style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.9, letterSpacing: '0.5px', textAlign: 'center' }}>
@@ -941,10 +997,11 @@ export const App: React.FC = () => {
               <a 
                 key={post.id}
                 href={getInstagramRedirectUrl(post.url)}
-                onClick={() => trackInstagramPostClick(post.id)}
+                onClick={(e) => handlePostClick(e, post)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="glass-card"
+                title={post.customTitle || 'Open on Instagram'}
                 style={{ 
                   position: 'relative', 
                   borderRadius: '12px', 
@@ -964,14 +1021,45 @@ export const App: React.FC = () => {
                   if (overlay) overlay.style.opacity = '0';
                 }}
               >
-                <img src={post.thumbnailUrl} alt={post.customTitle || 'Instagram Post'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img 
+                  src={post.thumbnailUrl} 
+                  alt={post.customTitle || 'Instagram Post'} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} 
+                />
+
+                {/* Always-visible badge for mobile touch awareness */}
+                <div 
+                  style={{
+                    position: 'absolute',
+                    bottom: '8px',
+                    left: '8px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+                    backdropFilter: 'blur(4px)',
+                    borderRadius: '20px',
+                    padding: '3px 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    color: 'white',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    zIndex: 2,
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <Instagram size={10} fill="#E1306C" style={{ color: '#E1306C' }} />
+                  <span>{post.type === 'reel' ? 'Reel ↗' : 'Post ↗'}</span>
+                </div>
+
                 <div 
                   className="post-overlay"
                   style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                     backgroundColor: 'rgba(0, 0, 0, 0.65)',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    opacity: 0, transition: 'opacity 0.2s', gap: '8px', color: 'white', fontSize: '12px', fontWeight: 'bold', padding: '12px'
+                    opacity: 0, transition: 'opacity 0.2s', gap: '8px', color: 'white', fontSize: '12px', fontWeight: 'bold', padding: '12px',
+                    pointerEvents: 'none',
+                    zIndex: 3
                   }}
                 >
                   <span style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.9, letterSpacing: '0.5px', textAlign: 'center' }}>

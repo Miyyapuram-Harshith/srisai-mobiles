@@ -157,21 +157,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
             {typeBadge.text}
           </span>
           {device.seenOnInstagram && (
-            <span style={{
-              fontSize: '9px',
-              fontWeight: 800,
-              padding: '2px 8px',
-              borderRadius: '4px',
-              backgroundColor: 'rgba(225, 48, 108, 0.12)',
-              color: '#E1306C',
-              border: '1px solid rgba(225, 48, 108, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
+            <a 
+              href="https://www.instagram.com/sri_sai_mobiles3048/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title="View on Sri Sai Mobiles Instagram Reels"
+              style={{
+                fontSize: '9px',
+                fontWeight: 800,
+                padding: '2px 8px',
+                borderRadius: '4px',
+                backgroundColor: 'rgba(225, 48, 108, 0.12)',
+                color: '#E1306C',
+                border: '1px solid rgba(225, 48, 108, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}
+            >
               <Instagram size={10} />
-              <span>Seen on Instagram</span>
-            </span>
+              <span>Seen on Instagram ↗</span>
+            </a>
           )}
         </div>
 

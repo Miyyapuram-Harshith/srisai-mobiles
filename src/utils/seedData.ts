@@ -1,4 +1,4 @@
-import { Device, Banner, FlashSale, AdminUser, Order } from '../types';
+import { Device, Banner, FlashSale, AdminUser, Order, InstagramPost } from '../types';
 
 export const INITIAL_DEVICES: Device[] = [
   {
@@ -575,6 +575,69 @@ export const INITIAL_FLASH_SALES: FlashSale[] = [
     startTime: new Date(Date.now() - 1800000).toISOString(),
     endTime: new Date(Date.now() + 36 * 3600000).toISOString(),
     enabled: true
+  }
+];
+
+export const INITIAL_INSTAGRAM_POSTS: InstagramPost[] = [
+  {
+    id: 'ig-post-1',
+    url: 'https://www.instagram.com/sri_sai_mobiles3048/',
+    type: 'reel',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?q=80&w=600&auto=format&fit=crop',
+    customTitle: '🔥 iPhone 15 Pro Max Live Unboxing',
+    customDescription: 'Experience the new titanium finish and unbeatable camera zoom available at Sri Sai Mobiles Jagtial.',
+    displayOrder: 1,
+    isFeatured: true,
+    isActive: true,
+    position: 'featured',
+    views: 1250,
+    clicks: 342,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'ig-post-2',
+    url: 'https://www.instagram.com/sri_sai_mobiles3048/',
+    type: 'reel',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?q=80&w=600&auto=format&fit=crop',
+    customTitle: '⚡ Samsung Galaxy S24 Ultra AI Demo',
+    customDescription: 'Testing Circle to Search and live translation features on the Galaxy S24 Ultra in our showroom.',
+    displayOrder: 2,
+    isFeatured: true,
+    isActive: true,
+    position: 'featured',
+    views: 980,
+    clicks: 215,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'ig-post-3',
+    url: 'https://www.instagram.com/sri_sai_mobiles3048/',
+    type: 'post',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=600&auto=format&fit=crop',
+    customTitle: '✨ Festive Exchange & Upgrade Deals',
+    customDescription: 'Upgrade your existing smartphone and receive instant trade-in bonus + zero downpayment EMI.',
+    displayOrder: 3,
+    isFeatured: false,
+    isActive: true,
+    position: 'middle',
+    views: 850,
+    clicks: 140,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'ig-post-4',
+    url: 'https://www.instagram.com/sri_sai_mobiles3048/',
+    type: 'post',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1580910051074-3eb694886505?q=80&w=600&auto=format&fit=crop',
+    customTitle: '🎧 Original Accessories & Cases in Stock',
+    customDescription: 'Genuine Apple 20W adapters, MagSafe wallets, and premium protective gear for all smartphones.',
+    displayOrder: 4,
+    isFeatured: false,
+    isActive: true,
+    position: 'bottom',
+    views: 620,
+    clicks: 98,
+    createdAt: new Date().toISOString()
   }
 ];
 
