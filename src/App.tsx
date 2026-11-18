@@ -10,7 +10,7 @@ import { SearchOverlay } from './components/SearchOverlay';
 import { AddressModal } from './components/AddressModal';
 import { CartDrawer } from './components/CartDrawer';
 import { LoginModal } from './components/LoginModal';
-import { CustomerOrdersModal } from './components/CustomerOrdersModal';
+import { CustomerOrdersPage } from './components/CustomerOrdersPage';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { ContactPage } from './components/ContactPage';
 import { AdminPortal } from './admin/AdminPortal';
@@ -49,7 +49,6 @@ export const App: React.FC = () => {
   // Modal States
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [isCustomerOrdersOpen, setIsCustomerOrdersOpen] = useState(false);
   const [isAddressOpen, setIsAddressOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -536,6 +535,8 @@ export const App: React.FC = () => {
       document.title = `Contact Us | ${storeSettings.storeName}`;
     } else if (currentRoute === 'wishlist') {
       document.title = `Your Wishlist | ${storeSettings.storeName}`;
+    } else if (currentRoute === 'orders' || currentRoute === 'my-orders') {
+      document.title = `My Orders & Live Tracking | ${storeSettings.storeName}`;
     } else if (currentRoute === 'cart') {
       document.title = `Shopping Cart | ${storeSettings.storeName}`;
     } else if (currentRoute.startsWith('product/')) {
@@ -1419,6 +1420,10 @@ export const App: React.FC = () => {
       return <ContactPage />;
     }
 
+    if (currentRoute === 'orders' || currentRoute === 'my-orders') {
+      return <CustomerOrdersPage />;
+    }
+
     return (
       <div style={{ 
         padding: '100px 20px', 
@@ -1551,7 +1556,7 @@ export const App: React.FC = () => {
         <Header 
           onOpenCart={() => setIsCartOpen(true)}
           onOpenLogin={() => setIsLoginOpen(true)}
-          onOpenCustomerOrders={() => setIsCustomerOrdersOpen(true)}
+          onOpenCustomerOrders={() => navigateTo('orders')}
           onOpenAddress={() => setIsAddressOpen(true)}
           onOpenCompare={() => setIsCompareOpen(true)}
           onOpenSearch={() => setIsSearchOpen(true)}
@@ -1635,11 +1640,6 @@ export const App: React.FC = () => {
       <LoginModal 
         isOpen={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
-      />
-
-      <CustomerOrdersModal 
-        isOpen={isCustomerOrdersOpen}
-        onClose={() => setIsCustomerOrdersOpen(false)}
       />
 
       <AddressModal 

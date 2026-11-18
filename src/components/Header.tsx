@@ -345,7 +345,7 @@ export const Header: React.FC<HeaderProps> = ({
           {currentUser ? (
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '6px' }} className="user-profile-menu">
               <button
-                onClick={onOpenCustomerOrders}
+                onClick={() => navigateTo('orders')}
                 className="premium-btn btn-secondary"
                 style={{
                   padding: '8px 14px',
@@ -697,6 +697,21 @@ export const Header: React.FC<HeaderProps> = ({
                 Contact Us
               </button>
 
+              <button 
+                onClick={() => { setIsMobileMenuOpen(false); navigateTo('orders'); }}
+                className="mobile-menu-item"
+                style={{
+                  padding: '12px', borderRadius: '8px', border: 'none', background: 'none',
+                  color: (currentRoute === 'orders' || currentRoute === 'my-orders') ? 'var(--primary)' : 'var(--text-main)', 
+                  fontWeight: (currentRoute === 'orders' || currentRoute === 'my-orders') ? 700 : 500,
+                  fontSize: '14px', cursor: 'pointer', textAlign: 'left', width: '100%',
+                  display: 'flex', alignItems: 'center', gap: '8px'
+                }}
+              >
+                <Package size={16} />
+                <span>My Orders & Live Tracking</span>
+              </button>
+
             </div>
 
             {/* Drawer Footer User Profile */}
@@ -717,7 +732,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                   </div>
                   <button 
-                    onClick={() => { setIsMobileMenuOpen(false); onOpenCustomerOrders(); }}
+                    onClick={() => { setIsMobileMenuOpen(false); navigateTo('orders'); }}
                     className="premium-btn btn-secondary"
                     style={{ width: '100%', padding: '8px', borderRadius: '8px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                   >
@@ -775,6 +790,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button onClick={() => navigateTo('accessories')} style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: currentRoute === 'accessories' ? 700 : 500, color: currentRoute === 'accessories' ? 'var(--primary)' : 'var(--text-muted)', fontSize: '12px' }}>Accessories Store</button>
           <button onClick={() => { navigateTo('home'); window.location.hash = '#filter?offers=exchange'; }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: 500, color: 'var(--text-muted)', fontSize: '12px' }}>Exchange Offers</button>
           <button onClick={() => navigateTo('wishlist')} style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: currentRoute === 'wishlist' ? 700 : 500, color: currentRoute === 'wishlist' ? 'var(--primary)' : 'var(--text-muted)', fontSize: '12px' }}>Wishlist</button>
+          <button onClick={() => navigateTo('orders')} style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: (currentRoute === 'orders' || currentRoute === 'my-orders') ? 700 : 500, color: (currentRoute === 'orders' || currentRoute === 'my-orders') ? 'var(--primary)' : 'var(--text-muted)', fontSize: '12px' }}>My Orders & Tracking</button>
           <button onClick={() => navigateTo('contact')} style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: currentRoute === 'contact' ? 700 : 500, color: currentRoute === 'contact' ? 'var(--primary)' : 'var(--text-muted)', fontSize: '12px' }}>Contact Us</button>
         </div>
       </div>

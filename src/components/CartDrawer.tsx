@@ -343,17 +343,30 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <div>Payment Mode: <strong style={{ textTransform: 'uppercase' }}>{orderSuccess.paymentMethod}</strong></div>
             <div>Grand Total: <strong>₹{orderSuccess.total.toLocaleString('en-IN')}</strong></div>
           </div>
-          <button
-            onClick={() => {
-              setOrderSuccess(null);
-              onClose();
-              navigateTo('home');
-            }}
-            className="premium-btn btn-primary"
-            style={{ width: '100%', borderRadius: '12px', padding: '12px' }}
-          >
-            Continue Shopping
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+            <button
+              onClick={() => {
+                setOrderSuccess(null);
+                onClose();
+                navigateTo('orders');
+              }}
+              className="premium-btn btn-primary"
+              style={{ width: '100%', borderRadius: '12px', padding: '12px', fontWeight: 800 }}
+            >
+              Track Order Live
+            </button>
+            <button
+              onClick={() => {
+                setOrderSuccess(null);
+                onClose();
+                navigateTo('home');
+              }}
+              className="premium-btn btn-secondary"
+              style={{ width: '100%', borderRadius: '12px', padding: '10px' }}
+            >
+              Continue Shopping
+            </button>
+          </div>
         </div>
       </div>
     );
