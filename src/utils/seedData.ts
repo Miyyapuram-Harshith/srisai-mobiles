@@ -581,7 +581,7 @@ export const INITIAL_FLASH_SALES: FlashSale[] = [
 export const INITIAL_INSTAGRAM_POSTS: InstagramPost[] = [
   {
     id: 'ig-post-1',
-    url: 'https://www.instagram.com/sri_sai_mobiles3048/',
+    url: 'https://www.instagram.com/sri_sai_mobiles3048/reels/',
     type: 'reel',
     thumbnailUrl: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?q=80&w=600&auto=format&fit=crop',
     customTitle: '🔥 iPhone 15 Pro Max Live Unboxing',
@@ -596,7 +596,7 @@ export const INITIAL_INSTAGRAM_POSTS: InstagramPost[] = [
   },
   {
     id: 'ig-post-2',
-    url: 'https://www.instagram.com/sri_sai_mobiles3048/',
+    url: 'https://www.instagram.com/sri_sai_mobiles3048/reels/',
     type: 'reel',
     thumbnailUrl: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?q=80&w=600&auto=format&fit=crop',
     customTitle: '⚡ Samsung Galaxy S24 Ultra AI Demo',
@@ -617,9 +617,9 @@ export const INITIAL_INSTAGRAM_POSTS: InstagramPost[] = [
     customTitle: '✨ Festive Exchange & Upgrade Deals',
     customDescription: 'Upgrade your existing smartphone and receive instant trade-in bonus + zero downpayment EMI.',
     displayOrder: 3,
-    isFeatured: false,
+    isFeatured: true,
     isActive: true,
-    position: 'middle',
+    position: 'featured',
     views: 850,
     clicks: 140,
     createdAt: new Date().toISOString()
@@ -632,9 +632,9 @@ export const INITIAL_INSTAGRAM_POSTS: InstagramPost[] = [
     customTitle: '🎧 Original Accessories & Cases in Stock',
     customDescription: 'Genuine Apple 20W adapters, MagSafe wallets, and premium protective gear for all smartphones.',
     displayOrder: 4,
-    isFeatured: false,
+    isFeatured: true,
     isActive: true,
-    position: 'bottom',
+    position: 'featured',
     views: 620,
     clicks: 98,
     createdAt: new Date().toISOString()

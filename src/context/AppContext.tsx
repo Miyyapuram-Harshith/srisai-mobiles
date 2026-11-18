@@ -488,13 +488,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setInstagramPosts(mapped);
         sessionStorage.setItem('srisai_instagram_posts', JSON.stringify(mapped));
       } else {
-        const saved = sessionStorage.getItem('srisai_instagram_posts');
-        setInstagramPosts(saved ? JSON.parse(saved) : INITIAL_INSTAGRAM_POSTS);
+        setInstagramPosts(INITIAL_INSTAGRAM_POSTS);
       }
     } catch (err) {
-      console.warn("instagram_posts query failed. Falling back to local/seed state.", err);
-      const saved = sessionStorage.getItem('srisai_instagram_posts');
-      setInstagramPosts(saved ? JSON.parse(saved) : INITIAL_INSTAGRAM_POSTS);
+      console.warn("instagram_posts query failed. Falling back to initial seed data.", err);
+      setInstagramPosts(INITIAL_INSTAGRAM_POSTS);
     }
   };
 

@@ -844,15 +844,23 @@ export const App: React.FC = () => {
     const showSection = instagramSettings.showSection;
 
     const activePosts = instagramPosts.filter(post => {
-      const matchPos = position === 'featured'
-        ? (post.position === 'featured' || Boolean(post.isFeatured))
-        : (post.position === position);
       const isActive = post.isActive === undefined ? true : Boolean(post.isActive);
       const isNotExpired = !post.expiryDate || new Date(post.expiryDate) >= new Date();
-      return matchPos && isActive && isNotExpired;
+      return isActive && isNotExpired;
     });
 
-    const postsToShow = [...activePosts].sort((a, b) => a.displayOrder - b.displayOrder).slice(0, instagramSettings.postsCount);
+    const postsForPosition = activePosts.filter(post => {
+      if (position === 'featured') {
+        return post.position === 'featured' || Boolean(post.isFeatured) || post.position === 'top' || post.position === 'middle';
+      }
+      return post.position === position;
+    });
+
+    const candidatePosts = postsForPosition.length > 0 ? postsForPosition : activePosts;
+    const postsToShow = [...candidatePosts]
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .slice(0, instagramSettings.postsCount);
+
     const postIdsKey = postsToShow.map(p => p.id).join(',');
 
     useEffect(() => {
@@ -864,19 +872,64 @@ export const App: React.FC = () => {
     }, [showSection, postIdsKey]);
 
     if (!showSection) return null;
-    if (activePosts.length === 0) return null;
+    if (postsToShow.length === 0) return null;
 
     const sectionTitle = position === 'featured' 
       ? '🌟 Featured Instagram Highlights' 
       : instagramSettings.sectionTitle;
 
-    const handlePostClick = (e: React.MouseEvent<HTMLAnchorElement>, post: (typeof postsToShow)[0]) => {
-      trackInstagramPostClick(post.id);
+    const renderPostCard = (post: (typeof postsToShow)[0]) => {
       const targetUrl = getInstagramRedirectUrl(post.url);
-      if (targetUrl) {
-        window.open(targetUrl, '_blank', 'noopener,noreferrer');
-        e.preventDefault();
-      }
+      const isReel = post.type === 'reel';
+
+      return (
+        <a 
+          key={post.id}
+          href={targetUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => trackInstagramPostClick(post.id)}
+          className="instagram-card"
+          title={`${post.customTitle || 'Instagram Post'} - Open on Instagram`}
+        >
+          <img 
+            src={post.thumbnailUrl} 
+            alt={post.customTitle || 'Instagram Post'} 
+            className="instagram-card-img"
+            loading="lazy"
+            decoding="async"
+          />
+
+          {/* Scrim Overlay with Top Badge, Center Play Icon (for Reels), and Bottom Caption */}
+          <div className="instagram-card-scrim">
+            {/* Top Header Pill */}
+            <div className="instagram-pill-badge">
+              <Instagram size={11} fill="white" style={{ color: 'white' }} />
+              <span>{isReel ? 'Reel' : 'Post'}</span>
+            </div>
+
+            {/* Center Play Icon for Reels */}
+            {isReel && (
+              <div className="instagram-play-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+              </div>
+            )}
+
+            {/* Bottom Caption & Action */}
+            <div className="instagram-card-caption">
+              <span className="instagram-card-title">
+                {post.customTitle || (isReel ? 'Watch Reel on Instagram' : 'View on Instagram')}
+              </span>
+              <span className="instagram-card-cta">
+                <span>Watch on Instagram</span>
+                <span>↗</span>
+              </span>
+            </div>
+          </div>
+        </a>
+      );
     };
 
     return (
@@ -909,169 +962,11 @@ export const App: React.FC = () => {
 
         {instagramSettings.layout === 'carousel' ? (
           <div className="instagram-posts-carousel">
-            {postsToShow.map(post => (
-              <a 
-                key={post.id}
-                href={getInstagramRedirectUrl(post.url)}
-                onClick={(e) => handlePostClick(e, post)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="glass-card"
-                title={post.customTitle || 'Open on Instagram'}
-                style={{ 
-                  position: 'relative', 
-                  borderRadius: '12px', 
-                  overflow: 'hidden', 
-                  width: '180px',
-                  height: '180px',
-                  display: 'block',
-                  padding: 0,
-                  border: '1px solid var(--border-color)',
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-                onMouseEnter={(e) => {
-                  const overlay = e.currentTarget.querySelector('.post-overlay') as HTMLElement;
-                  if (overlay) overlay.style.opacity = '1';
-                }}
-                onMouseLeave={(e) => {
-                  const overlay = e.currentTarget.querySelector('.post-overlay') as HTMLElement;
-                  if (overlay) overlay.style.opacity = '0';
-                }}
-              >
-                <img 
-                  src={post.thumbnailUrl} 
-                  alt={post.customTitle || 'Instagram Post'} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} 
-                />
-                
-                {/* Always-visible badge for mobile touch awareness */}
-                <div 
-                  style={{
-                    position: 'absolute',
-                    bottom: '8px',
-                    left: '8px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.72)',
-                    backdropFilter: 'blur(4px)',
-                    borderRadius: '20px',
-                    padding: '3px 8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    color: 'white',
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    zIndex: 2,
-                    pointerEvents: 'none'
-                  }}
-                >
-                  <Instagram size={10} fill="#E1306C" style={{ color: '#E1306C' }} />
-                  <span>{post.type === 'reel' ? 'Reel ↗' : 'Post ↗'}</span>
-                </div>
-
-                <div 
-                  className="post-overlay"
-                  style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    opacity: 0, transition: 'opacity 0.2s', gap: '8px', color: 'white', fontSize: '12px', fontWeight: 'bold', padding: '12px',
-                    pointerEvents: 'none',
-                    zIndex: 3
-                  }}
-                >
-                  <span style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.9, letterSpacing: '0.5px', textAlign: 'center' }}>
-                    {post.customTitle || (post.type === 'reel' ? 'Watch Reel' : 'View Post')}
-                  </span>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', backgroundColor: '#E1306C', padding: '4px 10px', borderRadius: '12px', fontSize: '11px' }}>
-                    <Instagram size={12} fill="white" />
-                    <span>Open on Instagram ↗</span>
-                  </div>
-                </div>
-              </a>
-            ))}
+            {postsToShow.map(renderPostCard)}
           </div>
         ) : (
           <div className="instagram-posts-grid">
-            {postsToShow.map(post => (
-              <a 
-                key={post.id}
-                href={getInstagramRedirectUrl(post.url)}
-                onClick={(e) => handlePostClick(e, post)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="glass-card"
-                title={post.customTitle || 'Open on Instagram'}
-                style={{ 
-                  position: 'relative', 
-                  borderRadius: '12px', 
-                  overflow: 'hidden', 
-                  aspectRatio: '1', 
-                  display: 'block',
-                  padding: 0,
-                  border: '1px solid var(--border-color)',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  const overlay = e.currentTarget.querySelector('.post-overlay') as HTMLElement;
-                  if (overlay) overlay.style.opacity = '1';
-                }}
-                onMouseLeave={(e) => {
-                  const overlay = e.currentTarget.querySelector('.post-overlay') as HTMLElement;
-                  if (overlay) overlay.style.opacity = '0';
-                }}
-              >
-                <img 
-                  src={post.thumbnailUrl} 
-                  alt={post.customTitle || 'Instagram Post'} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} 
-                />
-
-                {/* Always-visible badge for mobile touch awareness */}
-                <div 
-                  style={{
-                    position: 'absolute',
-                    bottom: '8px',
-                    left: '8px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.72)',
-                    backdropFilter: 'blur(4px)',
-                    borderRadius: '20px',
-                    padding: '3px 8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    color: 'white',
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    zIndex: 2,
-                    pointerEvents: 'none'
-                  }}
-                >
-                  <Instagram size={10} fill="#E1306C" style={{ color: '#E1306C' }} />
-                  <span>{post.type === 'reel' ? 'Reel ↗' : 'Post ↗'}</span>
-                </div>
-
-                <div 
-                  className="post-overlay"
-                  style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    opacity: 0, transition: 'opacity 0.2s', gap: '8px', color: 'white', fontSize: '12px', fontWeight: 'bold', padding: '12px',
-                    pointerEvents: 'none',
-                    zIndex: 3
-                  }}
-                >
-                  <span style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.9, letterSpacing: '0.5px', textAlign: 'center' }}>
-                    {post.customTitle || (post.type === 'reel' ? 'Watch Reel' : 'View Post')}
-                  </span>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', backgroundColor: '#E1306C', padding: '4px 10px', borderRadius: '12px', fontSize: '11px' }}>
-                    <Instagram size={12} fill="white" />
-                    <span>Open on Instagram ↗</span>
-                  </div>
-                </div>
-              </a>
-            ))}
+            {postsToShow.map(renderPostCard)}
           </div>
         )}
       </div>
