@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "pages:dev": "wrangler pages dev dist --live-reload",
     "pages:build": "npm run build",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy --yes",
     "db:migrate:local": "wrangler d1 migrations apply srisai_db_dev --local",
     "db:migrate:remote": "wrangler d1 migrations apply srisai_db_dev --remote",
     "db:seed:local": "wrangler d1 execute srisai_db_dev --local --file=./db/seed/0001_initial_data.sql && wrangler d1 execute srisai_db_dev --local --file=./db/seed/0002_categories.sql"
