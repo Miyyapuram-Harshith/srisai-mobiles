@@ -5,7 +5,7 @@ import {
   OrderStatus, PermissionRole, AuditLog, WhatsAppSettings, WhatsAppAnalytics,
   InstagramPost, Accessory, InstagramSettings
 } from '../types';
-import { INITIAL_DEVICES, INITIAL_BANNERS, INITIAL_FLASH_SALES, INITIAL_ADMINS, INITIAL_ORDERS, INITIAL_ACCESSORIES } from '../utils/seedData';
+import { INITIAL_DEVICES, INITIAL_BANNERS, INITIAL_FLASH_SALES, INITIAL_ADMINS, INITIAL_ORDERS, INITIAL_ACCESSORIES, INITIAL_INSTAGRAM_POSTS } from '../utils/seedData';
 import { checkPincodeServiceability, getEstimatedDateString } from '../utils/pincodeService';
 import { api } from '../lib/api-client';
 import { 
@@ -224,7 +224,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = sessionStorage.getItem('srisai_compare');
     return saved ? JSON.parse(saved) : [];
   });
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const saved = sessionStorage.getItem('srisai_orders');
+    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+  });
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
     const saved = sessionStorage.getItem('srisai_audit_logs');
     if (saved) return JSON.parse(saved);
@@ -315,7 +318,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [instagramPosts, setInstagramPosts] = useState<InstagramPost[]>([]);
+  const [instagramPosts, setInstagramPosts] = useState<InstagramPost[]>(() => {
+    const saved = sessionStorage.getItem('srisai_instagram_posts');
+    return saved ? JSON.parse(saved) : INITIAL_INSTAGRAM_POSTS;
+  });
   const [accessories, setAccessories] = useState<Accessory[]>(INITIAL_ACCESSORIES);
 
   const [instagramSettings, setInstagramSettings] = useState<InstagramSettings>(() => {
@@ -382,8 +388,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const refetchOrders = async () => {
-    const data = await api.get<any[]>('/api/orders');
-    setOrders((data || []).map(mapDbOrderToOrder).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()));
+    try {
+      const data = await api.get<any[]>('/api/orders');
+      if (data && data.length > 0) {
+        const mapped = data.map(mapDbOrderToOrder).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
+        setOrders(mapped);
+        sessionStorage.setItem('srisai_orders', JSON.stringify(mapped));
+      } else {
+        const saved = sessionStorage.getItem('srisai_orders');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.length > 0) {
+            setOrders(parsed);
+            return;
+          }
+        }
+        setOrders(INITIAL_ORDERS);
+      }
+    } catch (err) {
+      console.warn('Orders query failed. Falling back to local/seed state:', err);
+      const saved = sessionStorage.getItem('srisai_orders');
+      if (saved) {
+        setOrders(JSON.parse(saved));
+      } else {
+        setOrders(INITIAL_ORDERS);
+      }
+    }
   };
 
   const refetchAdmins = async () => {
@@ -438,28 +468,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refetchInstagram = async () => {
     try {
       const data = await api.get<any[]>('/api/instagram-posts');
-      const mapped = (data || []).map((d: any) => ({
-        id: d.id,
-        url: d.url,
-        type: d.type,
-        thumbnailUrl: d.thumbnail_url,
-        customTitle: d.custom_title,
-        customDescription: d.custom_description,
-        displayOrder: d.display_order,
-        isFeatured: Boolean(d.is_featured),
-        isActive: d.is_active !== undefined ? Boolean(d.is_active) : true,
-        position: d.position,
-        expiryDate: d.expiry_date,
-        views: d.views,
-        clicks: d.clicks,
-        createdAt: d.created_at
-      })).sort((a: any, b: any) => a.displayOrder - b.displayOrder);
-      setInstagramPosts(mapped);
-      sessionStorage.setItem('srisai_instagram_posts', JSON.stringify(mapped));
+      if (data && data.length > 0) {
+        const mapped = data.map((d: any) => ({
+          id: d.id,
+          url: d.url,
+          type: d.type,
+          thumbnailUrl: d.thumbnail_url,
+          customTitle: d.custom_title,
+          customDescription: d.custom_description,
+          displayOrder: d.display_order,
+          isFeatured: Boolean(d.is_featured),
+          isActive: d.is_active !== undefined ? Boolean(d.is_active) : true,
+          position: d.position,
+          expiryDate: d.expiry_date,
+          views: d.views,
+          clicks: d.clicks,
+          createdAt: d.created_at
+        })).sort((a: any, b: any) => a.displayOrder - b.displayOrder);
+        setInstagramPosts(mapped);
+        sessionStorage.setItem('srisai_instagram_posts', JSON.stringify(mapped));
+      } else {
+        const saved = sessionStorage.getItem('srisai_instagram_posts');
+        setInstagramPosts(saved ? JSON.parse(saved) : INITIAL_INSTAGRAM_POSTS);
+      }
     } catch (err) {
-      console.warn("instagram_posts query failed. Falling back to local state.", err);
+      console.warn("instagram_posts query failed. Falling back to local/seed state.", err);
       const saved = sessionStorage.getItem('srisai_instagram_posts');
-      if (saved) setInstagramPosts(JSON.parse(saved));
+      setInstagramPosts(saved ? JSON.parse(saved) : INITIAL_INSTAGRAM_POSTS);
     }
   };
 
@@ -1018,7 +1053,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
-    // Record the Order
+    // Record the Order in React State & Session Storage immediately
+    setOrders(prev => [newOrder, ...prev]);
+    const updatedOrders = [newOrder, ...orders];
+    sessionStorage.setItem('srisai_orders', JSON.stringify(updatedOrders));
+
+    // Persist updated product & accessory stock levels and sales to D1 database
+    cart.forEach(item => {
+      const dev = devices.find(d => d.id === item.deviceId);
+      if (dev) {
+        const updatedStock = Math.max(0, dev.stockCount - item.quantity);
+        const updatedSales = (dev.sales || 0) + item.quantity;
+        api.put(`/api/products/${encodeURIComponent(dev.id)}`, {
+          stock_count: updatedStock,
+          sales: updatedSales
+        }).catch(e => console.warn('Failed to sync product stock to D1:', e));
+      } else {
+        const acc = accessories.find(a => a.id === item.deviceId);
+        if (acc) {
+          const updatedStock = Math.max(0, acc.stockCount - item.quantity);
+          const updatedSales = (acc.sales || 0) + item.quantity;
+          api.put(`/api/accessories/${encodeURIComponent(acc.id)}`, {
+            stock_count: updatedStock,
+            sales: updatedSales,
+            status: updatedStock === 0 ? 'out_of_stock' : acc.status
+          }).catch(e => console.warn('Failed to sync accessory stock to D1:', e));
+        }
+      }
+    });
+
+    // Record the Order to API in D1
     const dbOrder = mapOrderToDbOrder(newOrder);
     api.post('/api/orders', dbOrder).catch((error) => {
       console.error('Failed to save order to API:', error);

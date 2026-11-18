@@ -51,6 +51,21 @@ export const AdminDashboard: React.FC = () => {
   const ordersToday = validOrders.filter(o => o.orderDate && o.orderDate.startsWith(todayDateStr));
   const revenueToday = ordersToday.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
 
+  // Total products bought / units sold calculation
+  const totalUnitsSold = validOrders.reduce((acc, o) => {
+    if (Array.isArray(o.items)) {
+      return acc + o.items.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0);
+    }
+    return acc;
+  }, 0);
+
+  const unitsSoldToday = ordersToday.reduce((acc, o) => {
+    if (Array.isArray(o.items)) {
+      return acc + o.items.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0);
+    }
+    return acc;
+  }, 0);
+
   const totalRevenue = validOrders.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
 
   // Average Order Value (AOV)
@@ -216,6 +231,21 @@ export const AdminDashboard: React.FC = () => {
           <div>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>TOTAL ORDERS</span>
             <span style={{ fontSize: '20px', fontWeight: 800 }}>{orders.length}</span>
+          </div>
+        </div>
+
+        {/* Units Sold / Products Bought */}
+        <div className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px' }}>
+          <div style={{
+            width: '42px', height: '42px', borderRadius: '10px',
+            backgroundColor: 'rgba(99, 102, 241, 0.12)', color: '#6366f1',
+            display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center'
+          }}>
+            <Smartphone size={20} />
+          </div>
+          <div>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>UNITS SOLD ({unitsSoldToday} today)</span>
+            <span style={{ fontSize: '20px', fontWeight: 800 }}>{totalUnitsSold}</span>
           </div>
         </div>
 
@@ -435,6 +465,22 @@ export const AdminDashboard: React.FC = () => {
             ) : (
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No products sold yet.</div>
             )}
+          </div>
+        </div>
+
+        {/* Top Selling Products */}
+        <div className="glass-card" style={{ padding: '16px 20px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+            <TrendingUp size={14} />
+            <span>Top Selling Products</span>
+          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {bestSelling.slice(0, 4).map(d => (
+              <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>
+                <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>{d.modelName}</span>
+                <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>{d.sales} sold ({d.stockCount} left)</span>
+              </div>
+            ))}
           </div>
         </div>
 

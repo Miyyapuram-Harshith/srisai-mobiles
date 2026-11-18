@@ -40,7 +40,23 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     const body = await context.request.json() as Record<string, any>;
     if (!body) return errorResponse('Missing request body', 'BAD_REQUEST', 400);
 
-    const { sql, values } = buildUpdateQuery('orders', id, body);
+    // Inspect existing columns in D1 orders table
+    let existingCols = new Set<string>();
+    try {
+      const { results: cols } = await context.env.DB.prepare('PRAGMA table_info(orders)').all();
+      existingCols = new Set((cols || []).map((c: any) => c.name));
+    } catch (e) {
+      console.warn('Could not read PRAGMA table_info(orders):', e);
+    }
+
+    let sanitizedBody = body;
+    if (existingCols.size > 0) {
+      sanitizedBody = Object.fromEntries(
+        Object.entries(body).filter(([k]) => existingCols.has(k))
+      );
+    }
+
+    const { sql, values } = buildUpdateQuery('orders', id, sanitizedBody);
     await context.env.DB.prepare(sql).bind(...values).run();
 
     const row = await context.env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(id).first();
