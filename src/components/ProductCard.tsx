@@ -190,6 +190,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
             e.stopPropagation();
             toggleWishlist(device.id);
           }}
+          aria-label={isWishlisted ? `Remove ${device.brand} ${device.modelName} from wishlist` : `Add ${device.brand} ${device.modelName} to wishlist`}
           style={{
             border: 'none',
             background: 'rgba(15, 23, 42, 0.65)',
@@ -222,8 +223,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
       }}>
         <img 
           src={device.images[0] || 'logo.jpg'} 
-          alt={device.modelName} 
+          alt={`${device.brand} ${device.modelName}`}
+          width="160"
+          height="160"
           loading="lazy"
+          decoding="async"
           style={{
             height: '100%',
             maxWidth: '100%',
@@ -486,6 +490,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
           onClick={handleAddToCart}
           className="premium-btn btn-secondary"
           disabled={device.stockCount === 0}
+          aria-label={`Add ${device.brand} ${device.modelName} to cart`}
           style={{
             padding: '8px 10px',
             borderRadius: '8px',
@@ -500,6 +505,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
         <button
           onClick={handleWhatsAppInquiry}
           className="premium-btn btn-secondary"
+          aria-label={`Inquire about ${device.brand} ${device.modelName} on WhatsApp`}
           style={{
             padding: '8px 10px',
             borderRadius: '8px',

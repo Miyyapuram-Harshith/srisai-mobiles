@@ -247,6 +247,7 @@ export const WhatsAppWidget: React.FC = () => {
             </p>
             <button 
               onClick={() => setIsOpen(false)}
+              aria-label="Close WhatsApp chat support"
               style={{
                 position: 'absolute', right: '12px', top: '16px', background: 'none', 
                 border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8
@@ -383,6 +384,7 @@ export const WhatsAppWidget: React.FC = () => {
       {/* FLOATING ACTION BUTTON */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
+        aria-label="Chat with Sri Sai Mobiles on WhatsApp"
         className={`whatsapp-float-btn ${pulseActive ? 'pulse-active' : ''}`}
         style={{
           right: isPositionRight ? '24px' : 'auto',

@@ -112,7 +112,7 @@ export const HeroCarousel: React.FC = () => {
           transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
-        {activeBanners.map((banner) => (
+        {activeBanners.map((banner, index) => (
           <a
             key={banner.id}
             href={banner.redirect_link}
@@ -135,7 +135,13 @@ export const HeroCarousel: React.FC = () => {
             
             <img 
               src={banner.image_url} 
-              alt={banner.title} 
+              alt={banner.title}
+              width="1200"
+              height="420"
+              loading={index === 0 ? "eager" : "lazy"}
+              decoding="async"
+              // @ts-ignore
+              fetchpriority={index === 0 ? "high" : "auto"}
               style={{
                 width: '100%',
                 height: '100%',
@@ -191,6 +197,7 @@ export const HeroCarousel: React.FC = () => {
         <>
           <button
             onClick={handlePrev}
+            aria-label="Previous slide"
             style={{
               position: 'absolute',
               top: '50%',
@@ -219,6 +226,7 @@ export const HeroCarousel: React.FC = () => {
           
           <button
             onClick={handleNext}
+            aria-label="Next slide"
             style={{
               position: 'absolute',
               top: '50%',
@@ -262,6 +270,7 @@ export const HeroCarousel: React.FC = () => {
             <button
               key={index}
               onClick={() => handleDotClick(index)}
+              aria-label={`Go to slide ${index + 1}`}
               style={{
                 border: 'none',
                 width: index === currentIndex ? '24px' : '8px',

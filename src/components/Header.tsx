@@ -198,6 +198,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button 
             onClick={toggleTheme}
             className="desktop-only"
+            aria-label="Toggle dark and light theme"
             style={{
               background: 'none',
               border: 'none',
@@ -219,6 +220,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button 
             onClick={onOpenCompare}
             className="desktop-only"
+            aria-label="Compare products"
             style={{
               background: 'none',
               border: 'none',
@@ -261,6 +263,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button 
             onClick={() => navigateTo('wishlist')}
             className="desktop-only"
+            aria-label="View wishlist"
             style={{
               background: 'none',
               border: 'none',
@@ -302,6 +305,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button 
             onClick={onOpenCart}
+            aria-label="Shopping cart"
             style={{
               background: 'none',
               border: 'none',
@@ -393,6 +397,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button 
                 onClick={handleLogout}
                 className="premium-btn btn-secondary"
+                aria-label="Logout"
                 style={{
                   padding: '8px 12px',
                   borderRadius: '20px',
@@ -443,6 +448,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Hamburger Button */}
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Open navigation menu"
               style={{
                 background: 'none',
                 border: 'none',
@@ -495,6 +501,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Cart Icon */}
           <button 
             onClick={onOpenCart}
+            aria-label="Shopping cart"
             style={{
               background: 'none',
               border: 'none',
@@ -587,6 +594,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
               <button 
                 onClick={() => setIsMobileMenuOpen(false)} 
+                aria-label="Close navigation menu"
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
               >
                 <X size={20} />

@@ -425,6 +425,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           )}
           <button 
             onClick={onClose}
+            aria-label="Close cart"
             style={{
               border: 'none',
               background: 'var(--bg-subtle)',
@@ -507,6 +508,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       }}>
                         <button 
                           onClick={() => updateCartQty(item.deviceId, item.selectedColor, item.quantity - 1)}
+                          aria-label={`Decrease quantity of ${item.name}`}
                           style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '2px 8px', display: 'flex', alignItems: 'center' }}
                         >
                           <Minus size={11} />
@@ -514,6 +516,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         <span style={{ padding: '0 8px', fontSize: '12px', fontWeight: 600 }}>{item.quantity}</span>
                         <button 
                           onClick={() => updateCartQty(item.deviceId, item.selectedColor, item.quantity + 1)}
+                          aria-label={`Increase quantity of ${item.name}`}
                           style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '2px 8px', display: 'flex', alignItems: 'center' }}
                         >
                           <Plus size={11} />
@@ -522,6 +525,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
                       <button 
                         onClick={() => removeFromCart(item.deviceId, item.selectedColor)}
+                        aria-label={`Remove ${item.name} from cart`}
                         style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
                         onMouseEnter={(e) => e.currentTarget.style.color = 'var(--error)'}
                         onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}

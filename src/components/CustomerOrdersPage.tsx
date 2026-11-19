@@ -691,6 +691,7 @@ export const CustomerOrdersPage: React.FC = () => {
                     </span>
                     <button
                       onClick={() => handleCopy(selectedOrder.id, 'orderId')}
+                      aria-label="Copy order ID"
                       title="Copy Order ID"
                       style={{
                         background: 'transparent',
@@ -1005,6 +1006,7 @@ export const CustomerOrdersPage: React.FC = () => {
                             </code>
                             <button
                               onClick={() => handleCopy(selectedOrder.trackingNumber || '', 'awb')}
+                              aria-label="Copy tracking number"
                               title="Copy Tracking Number"
                               style={{
                                 background: 'transparent',

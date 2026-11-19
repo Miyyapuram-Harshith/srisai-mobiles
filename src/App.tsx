@@ -4,17 +4,19 @@ import { Header } from './components/Header';
 import { HeroCarousel } from './components/HeroCarousel';
 import { FlashSaleSection } from './components/FlashSaleSection';
 import { ProductCard } from './components/ProductCard';
-import { ProductDetailPage } from './components/ProductDetailPage';
-import { ProductCompare } from './components/ProductCompare';
 import { SearchOverlay } from './components/SearchOverlay';
 import { AddressModal } from './components/AddressModal';
 import { CartDrawer } from './components/CartDrawer';
 import { LoginModal } from './components/LoginModal';
-import { CustomerOrdersPage } from './components/CustomerOrdersPage';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
-import { ContactPage } from './components/ContactPage';
-import { AdminPortal } from './admin/AdminPortal';
-import { AccessoryDetailModal } from './components/AccessoryDetailModal';
+
+// Code-splitting non-critical routes to optimize mobile performance and reduce main-thread execution time
+const ProductDetailPage = React.lazy(() => import('./components/ProductDetailPage').then(m => ({ default: m.ProductDetailPage })));
+const ProductCompare = React.lazy(() => import('./components/ProductCompare').then(m => ({ default: m.ProductCompare })));
+const CustomerOrdersPage = React.lazy(() => import('./components/CustomerOrdersPage').then(m => ({ default: m.CustomerOrdersPage })));
+const ContactPage = React.lazy(() => import('./components/ContactPage').then(m => ({ default: m.ContactPage })));
+const AdminPortal = React.lazy(() => import('./admin/AdminPortal').then(m => ({ default: m.AdminPortal })));
+const AccessoryDetailModal = React.lazy(() => import('./components/AccessoryDetailModal').then(m => ({ default: m.AccessoryDetailModal })));
 import { SlidersHorizontal, Trash2, Heart, Smartphone, MessageCircle, Compass, Phone, MapPin, Tag, ArrowUpDown, X } from 'lucide-react';
 
 const Instagram: React.FC<{ size?: number; style?: React.CSSProperties; fill?: string }> = ({ size = 20, style, fill = 'none' }) => (
@@ -1477,7 +1479,7 @@ export const App: React.FC = () => {
 
   const isRouteAdmin = currentRoute.startsWith('admin');
 
-  if (dbLoading || dbError) {
+  if ((dbLoading || dbError) && devices.length === 0) {
     return (
       <div style={{
         display: 'flex',
@@ -1565,10 +1567,16 @@ export const App: React.FC = () => {
 
       {/* 2. Main Page Router Container */}
       {isRouteAdmin ? (
-        <div style={{ flex: 1 }}>{renderRoute()}</div>
+        <div style={{ flex: 1 }}>
+          <React.Suspense fallback={<div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--text-muted)' }}><div className="animate-spin" style={{ width: '32px', height: '32px', margin: '0 auto 12px', border: '3px solid var(--border-color)', borderTopColor: 'var(--primary)', borderRadius: '50%' }} />Loading Portal...</div>}>
+            {renderRoute()}
+          </React.Suspense>
+        </div>
       ) : (
         <main className="container" style={{ flex: 1, paddingBottom: '60px' }}>
-          {renderRoute()}
+          <React.Suspense fallback={<div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--text-muted)' }}><div className="animate-spin" style={{ width: '32px', height: '32px', margin: '0 auto 12px', border: '3px solid var(--border-color)', borderTopColor: 'var(--primary)', borderRadius: '50%' }} />Loading...</div>}>
+            {renderRoute()}
+          </React.Suspense>
         </main>
       )}
 
@@ -1647,10 +1655,12 @@ export const App: React.FC = () => {
         onClose={() => setIsAddressOpen(false)}
       />
 
-      <ProductCompare 
-        isOpen={isCompareOpen}
-        onClose={() => setIsCompareOpen(false)}
-      />
+      <React.Suspense fallback={null}>
+        <ProductCompare 
+          isOpen={isCompareOpen}
+          onClose={() => setIsCompareOpen(false)}
+        />
+      </React.Suspense>
 
       <SearchOverlay 
         isOpen={isSearchOpen}
@@ -1658,13 +1668,15 @@ export const App: React.FC = () => {
         onSearchSubmit={handleSearchSubmit}
       />
 
-      {selectedAccessoryForDetail && (
-        <AccessoryDetailModal
-          accessory={selectedAccessoryForDetail}
-          onClose={() => setSelectedAccessoryForDetail(null)}
-          onOpenCart={() => { setSelectedAccessoryForDetail(null); setIsCartOpen(true); }}
-        />
-      )}
+      <React.Suspense fallback={null}>
+        {selectedAccessoryForDetail && (
+          <AccessoryDetailModal
+            accessory={selectedAccessoryForDetail}
+            onClose={() => setSelectedAccessoryForDetail(null)}
+            onOpenCart={() => { setSelectedAccessoryForDetail(null); setIsCartOpen(true); }}
+          />
+        )}
+      </React.Suspense>
 
       {/* Mobile Filters slide-in drawer from left */}
       {isMobileFilterOpen && (
@@ -1678,7 +1690,7 @@ export const App: React.FC = () => {
           >
             <div className="mobile-drawer-header">
               <h3>Filters</h3>
-              <button onClick={() => setIsMobileFilterOpen(false)} className="close-btn">
+              <button onClick={() => setIsMobileFilterOpen(false)} className="close-btn" aria-label="Close filters">
                 <X size={20} />
               </button>
             </div>
@@ -1715,7 +1727,7 @@ export const App: React.FC = () => {
           <div className="mobile-sort-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-sheet-header">
               <h3>Sort By</h3>
-              <button onClick={() => setIsMobileSortOpen(false)} className="close-btn">
+              <button onClick={() => setIsMobileSortOpen(false)} className="close-btn" aria-label="Close sort options">
                 <X size={20} />
               </button>
             </div>

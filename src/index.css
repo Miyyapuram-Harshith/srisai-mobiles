@@ -914,10 +914,10 @@ svg {
 /* Mobile-first touch targets and accessibility */
 @media (max-width: 640px) {
   button, .premium-btn, a[role="button"], input[type="button"], input[type="submit"] {
-    min-height: 40px;
+    min-height: 44px;
   }
   .input-field {
-    min-height: 42px;
+    min-height: 44px;
   }
 }
 

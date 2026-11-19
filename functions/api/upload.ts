@@ -28,8 +28,27 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
 
     const fileObj = file as File;
-    const sanitizedName = fileObj.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const key = `uploads/${Date.now()}-${sanitizedName}`;
+
+    // Security: Validate file size (max 15MB)
+    if (fileObj.size > 15 * 1024 * 1024) {
+      return errorResponse('File exceeds maximum allowed size of 15MB', 'FILE_TOO_LARGE', 400);
+    }
+
+    // Security: Validate allowed MIME types (Images & Videos only)
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
+    if (fileObj.type && !ALLOWED_TYPES.includes(fileObj.type.toLowerCase())) {
+      return errorResponse('Invalid file type. Only JPEG, PNG, WebP, GIF, and MP4 media are permitted.', 'FORBIDDEN_FILE_TYPE', 400);
+    }
+
+    // Security: Prevent directory traversal and normalize file extension
+    const cleanExt = (fileObj.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const safeExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm'];
+    if (!safeExtensions.includes(cleanExt)) {
+      return errorResponse('Unsafe file extension.', 'FORBIDDEN_EXTENSION', 400);
+    }
+
+    const sanitizedBase = fileObj.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
+    const key = `uploads/${Date.now()}-${sanitizedBase}.${cleanExt}`;
 
     await context.env.STORAGE.put(key, await fileObj.arrayBuffer(), {
       httpMetadata: {

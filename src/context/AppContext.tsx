@@ -174,7 +174,7 @@ async function fetchWithTimeout(promise: Promise<any>, timeoutMs = 4000): Promis
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Database loading & error states
-  const [dbLoading, setDbLoading] = useState(true);
+  const [dbLoading, setDbLoading] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
 
   // Toast notifications state
@@ -210,8 +210,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [banners, setBanners] = useState<Banner[]>([]);
+  const [devices, setDevices] = useState<Device[]>(() => {
+    const saved = sessionStorage.getItem('srisai_devices');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return INITIAL_DEVICES;
+  });
+
+  const [banners, setBanners] = useState<Banner[]>(() => {
+    const saved = sessionStorage.getItem('srisai_banners');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return INITIAL_BANNERS;
+  });
   const [flashSales, setFlashSales] = useState<FlashSale[]>(INITIAL_FLASH_SALES);
   const [admins, setAdmins] = useState<AdminUser[]>(INITIAL_ADMINS);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -378,13 +397,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Individual Table Fetchers / Refetchers
   const refetchProducts = async () => {
-    const products = await api.get<unknown[]>('/api/products');
-    setDevices(products.map(mapDbProductToDevice));
+    try {
+      const products = await api.get<unknown[]>('/api/products');
+      if (products && products.length > 0) {
+        const mapped = products.map(mapDbProductToDevice);
+        setDevices(mapped);
+        sessionStorage.setItem('srisai_devices', JSON.stringify(mapped));
+      }
+    } catch (e) {
+      console.warn('Products sync notice:', e);
+    }
   };
 
   const refetchBanners = async () => {
-    const data = await api.get<any[]>('/api/banners');
-    setBanners((data || []).map(mapDbBannerToBanner).sort((a, b) => a.priority - b.priority));
+    try {
+      const data = await api.get<any[]>('/api/banners');
+      if (data && data.length > 0) {
+        const mapped = (data || []).map(mapDbBannerToBanner).sort((a, b) => a.priority - b.priority);
+        setBanners(mapped);
+        sessionStorage.setItem('srisai_banners', JSON.stringify(mapped));
+      }
+    } catch (e) {
+      console.warn('Banners sync notice:', e);
+    }
   };
 
   const refetchOrders = async () => {
@@ -499,11 +534,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // 1. Load DB on mount
   const loadInitialData = async () => {
     try {
-      setDbLoading(true);
       setDbError(null);
 
-      // Execute refetches in parallel
-      await Promise.all([
+      // Execute refetches in parallel safely
+      await Promise.allSettled([
         refetchProducts(),
         refetchBanners(),
         refetchOrders(),
@@ -515,10 +549,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]);
 
     } catch (err: any) {
-      console.error('Error fetching API data:', err);
-      setDbError(err.message || 'Failed to connect to API');
-      if (devices.length === 0) setDevices(INITIAL_DEVICES);
-      if (banners.length === 0) setBanners(INITIAL_BANNERS);
+      console.warn('Data sync notice:', err);
     } finally {
       setDbLoading(false);
     }

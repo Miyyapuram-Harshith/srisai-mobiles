@@ -207,6 +207,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
             <button 
               type="button" 
               onClick={() => { setQuery(''); setSuggestions([]); setTypoCorrection(null); }}
+              aria-label="Clear search input"
               style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
             >
               <X size={18} />
@@ -215,6 +216,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose, o
           <button 
             type="button" 
             onClick={onClose}
+            aria-label="Close search overlay"
             style={{
               border: 'none',
               backgroundColor: 'var(--bg-subtle)',
