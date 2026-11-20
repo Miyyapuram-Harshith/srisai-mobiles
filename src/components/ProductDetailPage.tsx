@@ -214,7 +214,16 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
   };
 
   return (
-    <div className="animate-fade" style={{ padding: '20px 0' }}>
+    <div 
+      className="animate-fade" 
+      style={{ 
+        padding: '20px 0', 
+        width: '100%', 
+        maxWidth: '100%', 
+        overflowX: 'hidden', 
+        boxSizing: 'border-box' 
+      }}
+    >
       
       {/* Breadcrumb */}
       <div style={{ 
@@ -223,21 +232,19 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
         gap: '6px', 
         fontSize: '13px', 
         color: 'var(--text-muted)',
-        marginBottom: '24px'
+        marginBottom: '20px',
+        flexWrap: 'wrap',
+        wordBreak: 'break-word',
+        maxWidth: '100%'
       }}>
         <span style={{ cursor: 'pointer' }} onClick={() => navigateTo('home')}>Home</span>
-        <ChevronRight size={14} />
+        <ChevronRight size={14} style={{ flexShrink: 0 }} />
         <span>{device.brand}</span>
-        <ChevronRight size={14} />
-        <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>{device.modelName}</span>
+        <ChevronRight size={14} style={{ flexShrink: 0 }} />
+        <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{device.modelName}</span>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))',
-        gap: '40px',
-        marginBottom: '60px'
-      }}>
+      <div className="product-grid-layout">
         
         {/* Left Column: Image Gallery & Video Player */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -446,11 +453,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
           </div>
 
           {/* Color Selector */}
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '24px', width: '100%', maxWidth: '100%' }}>
             <span style={{ fontSize: '13px', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
               Select Color: <span style={{ color: 'var(--text-muted)' }}>{selectedColor}</span>
             </span>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%', maxWidth: '100%' }}>
               {device.colors.map(color => (
                 <button
                   key={color}
@@ -460,10 +467,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
                     borderRadius: '20px',
                     border: selectedColor === color ? '2px solid var(--primary)' : '1px solid var(--border-color)',
                     backgroundColor: selectedColor === color ? 'var(--bg-solid)' : 'var(--bg-subtle)',
+                    color: selectedColor === color ? 'var(--primary)' : 'var(--text-main)',
                     cursor: 'pointer',
                     fontSize: '12px',
                     fontWeight: 600,
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
                   }}
                 >
                   {color}
@@ -732,7 +741,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
           </button>
 
           {/* Toolbar Ops */}
-          <div style={{ display: 'flex', gap: '20px', fontSize: '13px', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '13px', color: 'var(--text-muted)', width: '100%', maxWidth: '100%', alignItems: 'center' }}>
             <button
               onClick={() => toggleWishlist(device.id)}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: isWishlisted ? 'var(--error)' : 'inherit' }}
@@ -760,7 +769,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
       </div>
 
       {/* CLASSIFICATION SPECIFIC DETAILS */}
-      <div className="glass-card" style={{ marginBottom: '40px', padding: '24px' }}>
+      <div className="glass-card" style={{ marginBottom: '40px', padding: 'clamp(16px, 4vw, 24px)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Info style={{ color: 'var(--primary)' }} size={20} />
           <span>Device Condition & Inventory Details</span>
@@ -768,7 +777,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
         
         {/* Brand New sealed details */}
         {device.deviceType === 'brand_new' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px', width: '100%', maxWidth: '100%' }}>
             <div>Factory Sealed: <strong>{device.factorySealed ? 'Yes (Unopened Box)' : 'No'}</strong></div>
             <div>Invoice Available: <strong>{device.invoiceAvailable ? 'Yes (Official Store Receipt)' : 'No'}</strong></div>
             <div>Brand Warranty: <strong>{device.officialBrandWarrantyAvailable ? `${device.warrantyDuration} Brand Warranty` : 'No'}</strong></div>
@@ -778,8 +787,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
         {/* Used phone diagnostics */}
         {device.deviceType === 'used' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '16px', fontSize: '13px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', maxWidth: '100%' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '16px', fontSize: '13px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', width: '100%', maxWidth: '100%' }}>
               <div>Condition Grade: <strong>{getGradeText(device.deviceConditionGrade)}</strong></div>
               <div>Battery Health: <strong>{device.batteryHealth}%</strong></div>
               <div>Ownership: <strong style={{ textTransform: 'capitalize' }}>{device.ownershipDetails?.replace(/_/g, ' ')}</strong></div>
@@ -795,11 +804,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
               </strong></div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '20px', width: '100%', maxWidth: '100%' }}>
               {/* Accessory checks */}
               <div>
                 <h4 style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Accessories Included</h4>
-                <ul style={{ paddingLeft: '16px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <ul style={{ paddingLeft: '16px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px', wordBreak: 'break-word' }}>
                   <li>Box Available: <strong>{device.boxAvailable ? 'Yes' : 'No'}</strong></li>
                   <li>Original Charger: <strong>{device.originalChargerAvailable ? 'Yes' : 'No'}</strong></li>
                   <li>Original USB Cable: <strong>{device.originalCableAvailable ? 'Yes' : 'No'}</strong></li>
@@ -812,7 +821,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
               {/* Hardware diagnostics */}
               <div>
                 <h4 style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Cosmetic Conditions</h4>
-                <ul style={{ paddingLeft: '16px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <ul style={{ paddingLeft: '16px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px', wordBreak: 'break-word' }}>
                   <li style={{ textTransform: 'capitalize' }}>Display Screen: <strong>{device.displayCondition?.replace('_', ' ')}</strong></li>
                   <li style={{ textTransform: 'capitalize' }}>Frame / Border: <strong>{device.frameCondition?.replace('_', ' ')}</strong></li>
                   <li style={{ textTransform: 'capitalize' }}>Back Glass Panel: <strong>{device.backPanelCondition?.replace('_', ' ')}</strong></li>
@@ -825,7 +834,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
               {/* Repairs & Notes */}
               <div>
                 <h4 style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Repair Logs & Unlock</h4>
-                <ul style={{ paddingLeft: '16px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <ul style={{ paddingLeft: '16px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px', wordBreak: 'break-word' }}>
                   <li style={{ textTransform: 'capitalize' }}>Carrier / SIM Lock: <strong>{device.networkLockStatus?.replace('_', ' ')}</strong></li>
                   <li style={{ textTransform: 'capitalize' }}>Repair History: <strong>{device.repairHistory?.replace('_', ' ')}</strong></li>
                   {device.repairDescription && <li>Repair notes: <em>{device.repairDescription}</em></li>}
@@ -835,9 +844,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
             {/* Quality Checklist */}
             {device.qualityCheckStatus && device.qualityCheckStatus.length > 0 && (
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', width: '100%', maxWidth: '100%' }}>
                 <h4 style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' }}>SriSai Lab Quality Checklists (Pass Status)</h4>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%', maxWidth: '100%' }}>
                   {device.qualityCheckStatus.map(chk => (
                     <span key={chk} style={{
                       fontSize: '11px',
@@ -862,29 +871,29 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
         {/* Open Box */}
         {device.deviceType === 'open_box' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px', width: '100%', maxWidth: '100%' }}>
             <div>Box Included: <strong>{device.openBoxBoxAvailable ? 'Yes' : 'No'}</strong></div>
             <div>All Inbox Accessories: <strong>{device.openBoxAccessoriesAvailable ? 'Yes' : 'No'}</strong></div>
             <div>Remaining Warranty: <strong>{device.openBoxWarrantyRemaining}</strong></div>
             {device.openBoxActivationDate && <div>Activation Date: <strong>{new Date(device.openBoxActivationDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong></div>}
-            {device.openBoxReason && <div style={{ gridColumn: 'span 2' }}>Reason for Open Box: <em>{device.openBoxReason}</em></div>}
+            {device.openBoxReason && <div style={{ gridColumn: '1 / -1' }}>Reason for Open Box: <em>{device.openBoxReason}</em></div>}
           </div>
         )}
 
         {/* Refurbished */}
         {device.deviceType === 'refurbished' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px', width: '100%', maxWidth: '100%' }}>
             <div>Refurbished Grade: <strong>{device.refurbishedGrade}</strong></div>
             <div>Refurbished By: <strong>{device.refurbishedBy}</strong></div>
             <div>Warranty Offered: <strong>{device.refurbishedWarrantyOffered}</strong></div>
             {device.refurbishedDate && <div>Refurbishment Date: <strong>{new Date(device.refurbishedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong></div>}
-            {device.refurbishedPartsReplaced && <div style={{ gridColumn: 'span 2' }}>Parts Repaired / Replaced: <strong>{device.refurbishedPartsReplaced}</strong></div>}
+            {device.refurbishedPartsReplaced && <div style={{ gridColumn: '1 / -1' }}>Parts Repaired / Replaced: <strong>{device.refurbishedPartsReplaced}</strong></div>}
           </div>
         )}
 
         {/* Demo Unit */}
         {device.deviceType === 'demo_unit' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px', fontSize: '13px', width: '100%', maxWidth: '100%' }}>
             <div>Store Demo Duration: <strong>{device.demoStoreUsageDuration}</strong></div>
             <div>Total Screen Usage: <strong>{device.demoUsageHours}</strong></div>
             <div>Cosmetic State: <strong>{device.demoPhysicalCondition}</strong></div>
@@ -895,12 +904,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
       </div>
 
       {/* Mid Section: Features Overview */}
-      <div className="glass-card" style={{ marginBottom: '40px', padding: '24px' }}>
+      <div className="glass-card" style={{ marginBottom: '40px', padding: 'clamp(16px, 4vw, 24px)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Sparkles style={{ color: 'var(--accent)' }} size={20} />
           <span>Product Key Features</span>
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '16px', width: '100%', maxWidth: '100%' }}>
           {device.features.map((feature, idx) => (
             <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
               <div style={{ 
@@ -910,35 +919,37 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
                 padding: '4px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                flexShrink: 0
               }}>
                 <Check size={14} />
               </div>
-              <p style={{ fontSize: '13px', color: 'var(--text-main)', lineHeight: 1.4 }}>{feature}</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-main)', lineHeight: 1.4, wordBreak: 'break-word' }}>{feature}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Specifications Table */}
-      <div className="glass-card" style={{ marginBottom: '60px', padding: '24px' }}>
+      <div className="glass-card" style={{ marginBottom: '40px', padding: 'clamp(16px, 4vw, 24px)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '20px' }}>Technical Specifications</h2>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+        <div style={{ overflowX: 'auto', width: '100%', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left', tableLayout: 'auto' }}>
             <tbody>
               {Object.entries(device.specifications).map(([key, value]) => (
                 <tr key={key} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ 
-                    padding: '12px', 
+                    padding: '12px 10px', 
                     fontWeight: 700, 
                     color: 'var(--text-muted)', 
                     width: '35%',
-                    minWidth: '100px',
+                    minWidth: '90px',
+                    wordBreak: 'break-word',
                     textTransform: 'capitalize' 
                   }}>
                     {key.replace(/([A-Z])/g, ' $1')}
                   </td>
-                  <td style={{ padding: '12px', color: 'var(--text-main)' }}>
+                  <td style={{ padding: '12px 10px', color: 'var(--text-main)', wordBreak: 'break-word' }}>
                     {value}
                   </td>
                 </tr>
@@ -950,16 +961,26 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
       {/* Recommendations Slider: Related Devices */}
       {relatedProducts.length > 0 && (
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '16px' }}>More from {device.brand}</h2>
+        <section style={{ marginBottom: '40px', width: '100%', maxWidth: '100%' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '16px' }}>More from {device.brand}</h2>
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 250px), 1fr))', 
-            gap: '20px' 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', 
+            gap: '16px',
+            width: '100%',
+            maxWidth: '100%'
           }}>
             {relatedProducts.map(d => (
-              <div key={d.id} className="glass-card" onClick={() => navigateTo(`product/${d.id}`)} style={{ cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column' }}>
-                <img src={d.images[0]} alt={d.modelName} style={{ height: '120px', objectFit: 'contain', margin: '10px auto' }} />
+              <div 
+                key={d.id} 
+                className="glass-card" 
+                onClick={() => {
+                  navigateTo(`product/${d.id}`);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }} 
+                style={{ cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column' }}
+              >
+                <img src={d.images[0]} alt={d.modelName} loading="lazy" style={{ height: '120px', objectFit: 'contain', margin: '10px auto', maxWidth: '100%' }} />
                 <h4 style={{ fontSize: '14px', margin: '12px 0 4px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.modelName}</h4>
                 <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '14px' }}>₹{d.offerPrice.toLocaleString('en-IN')}</div>
               </div>
@@ -970,16 +991,26 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
       {/* Recommendations Slider: Similar Price range */}
       {similarProducts.length > 0 && (
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '16px' }}>Similar Smartphones</h2>
+        <section style={{ marginBottom: '40px', width: '100%', maxWidth: '100%' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '16px' }}>Similar Smartphones</h2>
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 250px), 1fr))', 
-            gap: '20px' 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', 
+            gap: '16px',
+            width: '100%',
+            maxWidth: '100%'
           }}>
             {similarProducts.map(d => (
-              <div key={d.id} className="glass-card" onClick={() => navigateTo(`product/${d.id}`)} style={{ cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column' }}>
-                <img src={d.images[0]} alt={d.modelName} style={{ height: '120px', objectFit: 'contain', margin: '10px auto' }} />
+              <div 
+                key={d.id} 
+                className="glass-card" 
+                onClick={() => {
+                  navigateTo(`product/${d.id}`);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }} 
+                style={{ cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column' }}
+              >
+                <img src={d.images[0]} alt={d.modelName} loading="lazy" style={{ height: '120px', objectFit: 'contain', margin: '10px auto', maxWidth: '100%' }} />
                 <h4 style={{ fontSize: '14px', margin: '12px 0 4px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.modelName}</h4>
                 <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '14px' }}>₹{d.offerPrice.toLocaleString('en-IN')}</div>
               </div>
@@ -990,16 +1021,26 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
       {/* Recommendations Slider: Recently Viewed */}
       {viewedDevices.length > 0 && (
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '16px' }}>Recently Viewed Products</h2>
+        <section style={{ marginBottom: '40px', width: '100%', maxWidth: '100%' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '16px' }}>Recently Viewed Products</h2>
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 250px), 1fr))', 
-            gap: '20px' 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', 
+            gap: '16px',
+            width: '100%',
+            maxWidth: '100%'
           }}>
             {viewedDevices.map(d => (
-              <div key={d.id} className="glass-card" onClick={() => navigateTo(`product/${d.id}`)} style={{ cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column' }}>
-                <img src={d.images[0]} alt={d.modelName} style={{ height: '120px', objectFit: 'contain', margin: '10px auto' }} />
+              <div 
+                key={d.id} 
+                className="glass-card" 
+                onClick={() => {
+                  navigateTo(`product/${d.id}`);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }} 
+                style={{ cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column' }}
+              >
+                <img src={d.images[0]} alt={d.modelName} loading="lazy" style={{ height: '120px', objectFit: 'contain', margin: '10px auto', maxWidth: '100%' }} />
                 <h4 style={{ fontSize: '14px', margin: '12px 0 4px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.modelName}</h4>
                 <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '14px' }}>₹{d.offerPrice.toLocaleString('en-IN')}</div>
               </div>
