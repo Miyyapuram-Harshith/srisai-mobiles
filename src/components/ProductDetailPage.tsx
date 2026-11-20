@@ -583,10 +583,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
             </span>
           </div>
 
-          <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '0 0 8px 0', lineHeight: 1.1 }}>
+          <h1 style={{ fontSize: 'clamp(22px, 5vw, 28px)', fontWeight: 800, margin: '0 0 8px 0', lineHeight: 1.15, wordBreak: 'break-word' }}>
             {device.modelName}
           </h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '16px', wordBreak: 'break-word' }}>
             Specification: {device.ram} RAM • {device.storage} Storage ({device.variant})
           </p>
 
@@ -594,20 +594,23 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
           <div style={{ 
             backgroundColor: 'var(--bg-subtle)',
             borderRadius: '16px',
-            padding: '16px 20px',
+            padding: 'clamp(12px, 3.5vw, 20px)',
             border: '1px solid var(--border-color)',
-            marginBottom: '24px'
+            marginBottom: '24px',
+            boxSizing: 'border-box',
+            width: '100%',
+            maxWidth: '100%'
           }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-              <span style={{ fontSize: '32px', fontWeight: 900, color: 'var(--text-main)' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 'clamp(26px, 6vw, 32px)', fontWeight: 900, color: 'var(--text-main)' }}>
                 ₹{device.offerPrice.toLocaleString('en-IN')}
               </span>
               {device.price > device.offerPrice && (
                 <>
-                  <span style={{ fontSize: '16px', textDecoration: 'line-through', color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: '15px', textDecoration: 'line-through', color: 'var(--text-muted)' }}>
                     ₹{device.price.toLocaleString('en-IN')}
                   </span>
-                  <span className="badge badge-sale" style={{ fontSize: '12px' }}>
+                  <span className="badge badge-sale" style={{ fontSize: '11px' }}>
                     {discountPercent}% OFF
                   </span>
                 </>
@@ -625,9 +628,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
               borderTop: '1px solid var(--border-color)',
               fontSize: '13px',
               color: 'var(--success)',
-              fontWeight: 600
+              fontWeight: 600,
+              flexWrap: 'wrap',
+              wordBreak: 'break-word'
             }}>
-              <Tag size={14} />
+              <Tag size={14} style={{ flexShrink: 0 }} />
               <span>No Cost EMI available from ₹{emiPrice.toLocaleString('en-IN')}/month. 100% Interest waiver.</span>
             </div>
           </div>
@@ -708,7 +713,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
                     const clean = e.target.value.replace(/\D/g, '').slice(0, 6);
                     setPincode(clean);
                     if (pincodeError) setPincodeError('');
-                    if (clean.length < 6 && pincodeResult) setPincodeResult(null);
+                    if (clean.length === 6) {
+                      handlePincodeCheck(undefined, clean);
+                    } else if (pincodeResult) {
+                      setPincodeResult(null);
+                    }
                   }}
                   className="input-field"
                   style={{
