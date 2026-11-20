@@ -23,6 +23,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
   // State Management
   const [activeImage, setActiveImage] = useState(device?.images?.[0] || 'logo.jpg');
   const [selectedColor, setSelectedColor] = useState(device?.colors?.[0] || 'Default');
+  const [mobileImageIndex, setMobileImageIndex] = useState(0);
+  const mobileGalleryRef = useRef<HTMLDivElement>(null);
   
   // Initialize pincode from localStorage if available
   const [pincode, setPincode] = useState<string>(() => {
@@ -54,6 +56,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
   useEffect(() => {
     if (!device) return;
     setActiveImage(device.images?.[0] || 'logo.jpg');
+    setMobileImageIndex(0);
     setSelectedColor(device.colors?.[0] || 'Default');
     setShowVideo(false);
     setPincodeError('');
@@ -218,6 +221,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
       className="animate-fade" 
       style={{ 
         padding: '20px 0', 
+        paddingBottom: '90px',
         width: '100%', 
         maxWidth: '100%', 
         overflowX: 'hidden', 
@@ -355,30 +359,206 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
           </div>
 
           {/* Mobile Swipe Gallery */}
-          <div className="mobile-only-flex" style={{ flexDirection: 'column', gap: '10px', width: '100%' }}>
-            <div style={{ 
-              display: 'flex', 
-              overflowX: 'auto', 
-              scrollSnapType: 'x mandatory', 
-              width: '100%', 
-              height: '350px', 
-              scrollbarWidth: 'none', 
-              border: '1px solid var(--border-color)', 
-              borderRadius: '20px', 
-              backgroundColor: 'var(--bg-solid)',
-              position: 'relative'
-            }}>
-              {device.images.map((img, i) => (
-                <div key={i} style={{ flex: '0 0 100%', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', scrollSnapAlign: 'center' }}>
-                  <img src={img} alt={`${device.modelName}-${i}`} loading="lazy" style={{ maxHeight: '90%', maxWidth: '90%', objectFit: 'contain' }} />
+          <div className="mobile-only-flex" style={{ flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '100%' }}>
+            <div style={{ position: 'relative', width: '100%', maxWidth: '100%' }}>
+              {showVideo && device.videoUrl ? (
+                <div style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '340px',
+                  borderRadius: '20px',
+                  backgroundColor: 'black',
+                  overflow: 'hidden'
+                }}>
+                  <video src={device.videoUrl} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  <button 
+                    onClick={() => setShowVideo(false)}
+                    style={{
+                      position: 'absolute', top: '10px', right: '10px', border: 'none',
+                      backgroundColor: 'rgba(0,0,0,0.7)', color: 'white', padding: '6px 12px',
+                      borderRadius: '20px', cursor: 'pointer', fontSize: '12px', fontWeight: 600,
+                      zIndex: 10
+                    }}
+                    aria-label="Close video"
+                  >
+                    Close Video
+                  </button>
                 </div>
-              ))}
+              ) : (
+                <div 
+                  ref={mobileGalleryRef}
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    const idx = Math.round(el.scrollLeft / (el.clientWidth || 1));
+                    if (idx !== mobileImageIndex && device.images[idx]) {
+                      setMobileImageIndex(idx);
+                      setActiveImage(device.images[idx]);
+                    }
+                  }}
+                  style={{ 
+                    display: 'flex', 
+                    overflowX: 'auto', 
+                    scrollSnapType: 'x mandatory', 
+                    width: '100%', 
+                    maxWidth: '100%', 
+                    height: '340px', 
+                    scrollbarWidth: 'none', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: '20px', 
+                    backgroundColor: 'var(--bg-solid)',
+                    position: 'relative',
+                    WebkitOverflowScrolling: 'touch',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {device.images.map((img, i) => (
+                    <div 
+                      key={i} 
+                      style={{ 
+                        flex: '0 0 100%', 
+                        width: '100%', 
+                        minWidth: '100%', 
+                        maxWidth: '100%', 
+                        height: '100%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        scrollSnapAlign: 'center',
+                        padding: '16px',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <img 
+                        src={img} 
+                        alt={`${device.modelName} photo ${i + 1}`} 
+                        loading={i === 0 ? "eager" : "lazy"} 
+                        style={{ maxHeight: '90%', maxWidth: '90%', objectFit: 'contain' }} 
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Mobile Video Play Button */}
+              {!showVideo && device.videoUrl && (
+                <button 
+                  onClick={() => setShowVideo(true)}
+                  style={{
+                    position: 'absolute', bottom: '12px', right: '12px', border: 'none',
+                    backgroundColor: 'var(--primary)', color: 'white', width: '42px', height: '42px',
+                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                    zIndex: 5
+                  }}
+                  title="Play Video"
+                  aria-label="Play product video"
+                >
+                  <Play size={18} fill="white" />
+                </button>
+              )}
+
+              {/* Mobile Image Counter Badge */}
+              {!showVideo && device.images.length > 1 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  backgroundColor: 'rgba(0,0,0,0.65)',
+                  color: 'white',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  pointerEvents: 'none',
+                  zIndex: 5
+                }}>
+                  {mobileImageIndex + 1} / {device.images.length}
+                </div>
+              )}
             </div>
+
             {/* Swiping Dots */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '4px' }}>
-              {device.images.map((_, i) => (
-                <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--text-muted)', opacity: 0.5 }} />
+            {device.images.length > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', margin: '4px 0' }}>
+                {device.images.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setMobileImageIndex(i);
+                      setActiveImage(device.images[i]);
+                      if (mobileGalleryRef.current) {
+                        mobileGalleryRef.current.scrollTo({
+                          left: i * mobileGalleryRef.current.clientWidth,
+                          behavior: 'smooth'
+                        });
+                      }
+                    }}
+                    style={{
+                      width: mobileImageIndex === i ? '18px' : '6px',
+                      height: '6px',
+                      borderRadius: '3px',
+                      backgroundColor: mobileImageIndex === i ? 'var(--primary)' : 'var(--text-muted)',
+                      opacity: mobileImageIndex === i ? 1 : 0.4,
+                      transition: 'all 0.2s ease',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer'
+                    }}
+                    aria-label={`Go to slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Mobile Thumbnails Strip */}
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '2px 0', width: '100%', maxWidth: '100%', scrollbarWidth: 'none' }}>
+              {device.images.map((img, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setActiveImage(img);
+                    setMobileImageIndex(index);
+                    setShowVideo(false);
+                    if (mobileGalleryRef.current) {
+                      mobileGalleryRef.current.scrollTo({
+                        left: index * mobileGalleryRef.current.clientWidth,
+                        behavior: 'smooth'
+                      });
+                    }
+                  }}
+                  style={{
+                    flex: '0 0 54px',
+                    height: '54px',
+                    borderRadius: '10px',
+                    backgroundColor: 'var(--bg-solid)',
+                    border: mobileImageIndex === index && !showVideo ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px',
+                    boxSizing: 'border-box'
+                  }}
+                  aria-label={`Select view ${index + 1}`}
+                >
+                  <img src={img} alt="thumbnail" loading="lazy" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                </button>
               ))}
+              {device.videoUrl && (
+                <button
+                  onClick={() => setShowVideo(true)}
+                  style={{
+                    flex: '0 0 54px', height: '54px', borderRadius: '10px',
+                    backgroundColor: '#000', border: showVideo ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                    cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    color: 'white', position: 'relative', padding: '4px', boxSizing: 'border-box'
+                  }}
+                  aria-label="Play video"
+                >
+                  <Play size={16} fill="white" />
+                  <span style={{ fontSize: '8px', fontWeight: 'bold', marginTop: '2px' }}>VIDEO</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1057,36 +1237,74 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
           bottom: 0,
           left: 0,
           right: 0,
+          width: '100%',
+          maxWidth: '100vw',
+          boxSizing: 'border-box',
           backgroundColor: 'var(--bg-surface)',
           backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
           borderTop: '1px solid var(--border-color)',
-          padding: '12px 16px',
+          padding: '10px 16px',
+          paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
           zIndex: 100,
           boxShadow: '0 -4px 20px rgba(0,0,0,0.1)'
         }}
       >
-        <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+        <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '100%', alignItems: 'center' }}>
           <button
             onClick={handleWhatsAppInquiry}
             className="premium-btn btn-secondary"
-            style={{ padding: '12px', borderRadius: '12px', borderColor: '#25D366', color: '#128C7E', backgroundColor: 'rgba(37, 211, 102, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', minWidth: '44px' }}
+            style={{ 
+              padding: '10px', 
+              borderRadius: '12px', 
+              borderColor: '#25D366', 
+              color: '#128C7E', 
+              backgroundColor: 'rgba(37, 211, 102, 0.08)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              width: '44px', 
+              height: '44px', 
+              minWidth: '44px',
+              flexShrink: 0
+            }}
             title="Inquire on WhatsApp"
+            aria-label="Inquire about this product on WhatsApp"
           >
-            <MessageCircle size={18} fill="#25D366" style={{ color: '#128C7E' }} />
+            <MessageCircle size={20} fill="#25D366" style={{ color: '#128C7E' }} />
           </button>
           <button
             onClick={handleAddToCart}
             disabled={device.stockCount === 0}
             className="premium-btn btn-secondary"
-            style={{ flex: 1, height: '44px', borderRadius: '12px', fontSize: '13px', opacity: device.stockCount === 0 ? 0.5 : 1 }}
+            style={{ 
+              flex: 1, 
+              height: '44px', 
+              borderRadius: '12px', 
+              fontSize: '13px', 
+              fontWeight: 700,
+              opacity: device.stockCount === 0 ? 0.5 : 1,
+              whiteSpace: 'nowrap'
+            }}
+            aria-label="Add product to cart"
           >
-            Add to Cart
+            <ShoppingCart size={16} />
+            <span>Add to Cart</span>
           </button>
           <button
             onClick={handleBuyNow}
             disabled={device.stockCount === 0}
             className="premium-btn btn-primary"
-            style={{ flex: 1.5, height: '44px', borderRadius: '12px', fontSize: '13px', opacity: device.stockCount === 0 ? 0.5 : 1 }}
+            style={{ 
+              flex: 1.3, 
+              height: '44px', 
+              borderRadius: '12px', 
+              fontSize: '13px', 
+              fontWeight: 700,
+              opacity: device.stockCount === 0 ? 0.5 : 1,
+              whiteSpace: 'nowrap'
+            }}
+            aria-label="Buy product now"
           >
             Buy Now
           </button>
