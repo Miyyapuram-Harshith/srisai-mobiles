@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { checkPincodeServiceability, getEstimatedDateString, PincodeDetails } from '../utils/pincodeService';
 import { 
   Heart, ShoppingCart, GitCompare, ShieldCheck, Truck, 
-  Tag, Play, Sparkles, ChevronRight, Check, AlertCircle, Info, MessageCircle
+  Tag, Play, Sparkles, ChevronRight, Check, AlertCircle, Info, MessageCircle,
+  MapPin, X
 } from 'lucide-react';
 
 interface ProductDetailPageProps {
@@ -22,22 +23,60 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
   // State Management
   const [activeImage, setActiveImage] = useState(device?.images?.[0] || 'logo.jpg');
   const [selectedColor, setSelectedColor] = useState(device?.colors?.[0] || 'Default');
-  const [pincode, setPincode] = useState('');
-  const [pincodeResult, setPincodeResult] = useState<PincodeDetails | null>(null);
+  
+  // Initialize pincode from localStorage if available
+  const [pincode, setPincode] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ssm_pincode') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const [pincodeResult, setPincodeResult] = useState<PincodeDetails | null>(() => {
+    try {
+      const saved = localStorage.getItem('ssm_pincode');
+      if (saved && /^\d{6}$/.test(saved) && device) {
+        return checkPincodeServiceability(saved, device.offerPrice);
+      }
+    } catch {
+      // fallback
+    }
+    return null;
+  });
+
+  const [pincodeError, setPincodeError] = useState<string>('');
   const [showVideo, setShowVideo] = useState(false);
   const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({ display: 'none' });
+  const viewLoggedForRef = useRef<string | null>(null);
 
+  // Reset product configuration strictly when deviceId changes (NOT on every device object reference change)
   useEffect(() => {
     if (!device) return;
     setActiveImage(device.images?.[0] || 'logo.jpg');
     setSelectedColor(device.colors?.[0] || 'Default');
-    setPincodeResult(null);
-    setPincode('');
     setShowVideo(false);
-    
-    incrementDeviceViews(device.id);
-    addRecentlyViewed(device.id);
-  }, [deviceId, device, incrementDeviceViews, addRecentlyViewed]);
+    setPincodeError('');
+
+    // Re-verify saved pincode against new device offer price
+    try {
+      const savedPin = localStorage.getItem('ssm_pincode');
+      if (savedPin && /^\d{6}$/.test(savedPin)) {
+        setPincode(savedPin);
+        setPincodeResult(checkPincodeServiceability(savedPin, device.offerPrice));
+      }
+    } catch {
+      // ignore
+    }
+  }, [deviceId]);
+
+  // Log view counts strictly ONCE per deviceId navigation
+  useEffect(() => {
+    if (!deviceId || viewLoggedForRef.current === deviceId) return;
+    viewLoggedForRef.current = deviceId;
+    incrementDeviceViews(deviceId);
+    addRecentlyViewed(deviceId);
+  }, [deviceId, incrementDeviceViews, addRecentlyViewed]);
 
   if (!device) {
     return (
@@ -69,10 +108,41 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
     setZoomStyle({ display: 'none' });
   };
 
-  const handlePincodeCheck = (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = checkPincodeServiceability(pincode, device.offerPrice);
+  const handlePincodeCheck = (e?: React.FormEvent, overridePin?: string) => {
+    if (e) e.preventDefault();
+    const pinToCheck = (overridePin !== undefined ? overridePin : pincode).trim().replace(/\D/g, '');
+    
+    if (pinToCheck.length !== 6) {
+      setPincodeError('Please enter a valid 6-digit PIN code.');
+      setPincodeResult(null);
+      return;
+    }
+
+    setPincodeError('');
+    const res = checkPincodeServiceability(pinToCheck, device.offerPrice);
     setPincodeResult(res);
+    try {
+      localStorage.setItem('ssm_pincode', pinToCheck);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleQuickPincodeSelect = (quickPin: string) => {
+    setPincode(quickPin);
+    setPincodeError('');
+    handlePincodeCheck(undefined, quickPin);
+  };
+
+  const handlePincodeClear = () => {
+    setPincode('');
+    setPincodeResult(null);
+    setPincodeError('');
+    try {
+      localStorage.removeItem('ssm_pincode');
+    } catch {
+      // ignore
+    }
   };
 
   const handleCompareClick = () => {
@@ -407,50 +477,209 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
             border: '1px solid var(--border-color)',
             borderRadius: '16px',
             padding: '16px',
-            marginBottom: '24px'
+            marginBottom: '24px',
+            backgroundColor: 'var(--bg-subtle)',
+            boxSizing: 'border-box',
+            width: '100%',
+            maxWidth: '100%'
           }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>
-              <Truck size={16} style={{ color: 'var(--primary)' }} />
-              <span>Delivery Serviceability Check</span>
-            </span>
-            <form onSubmit={handlePincodeCheck} style={{ display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
-                placeholder="Enter 6-digit Pincode (e.g. 505327)"
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value)}
-                className="input-field"
-                style={{ padding: '8px 12px', fontSize: '13px' }}
-                maxLength={6}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 700 }}>
+                <Truck size={18} style={{ color: 'var(--primary)' }} />
+                <span>Delivery Serviceability Check</span>
+              </span>
+              {pincodeResult?.serviceable && (
+                <span style={{ 
+                  fontSize: '11px', 
+                  color: 'var(--success)', 
+                  fontWeight: 700, 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '4px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  padding: '2px 8px',
+                  borderRadius: '10px'
+                }}>
+                  <Check size={12} strokeWidth={3} />
+                  <span>Verified Serviceable</span>
+                </span>
+              )}
+            </div>
+
+            <form onSubmit={(e) => handlePincodeCheck(e)} style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '100%' }}>
+              <div style={{ position: 'relative', flex: '1 1 auto', minWidth: 0 }}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="postal-code"
+                  placeholder="Enter 6-digit Pincode (e.g. 505327)"
+                  value={pincode}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setPincode(clean);
+                    if (pincodeError) setPincodeError('');
+                    if (clean.length < 6 && pincodeResult) setPincodeResult(null);
+                  }}
+                  className="input-field"
+                  style={{
+                    width: '100%',
+                    minWidth: 0,
+                    height: '44px',
+                    padding: '8px 36px 8px 12px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                    borderColor: pincodeError ? 'var(--error)' : undefined
+                  }}
+                  maxLength={6}
+                  aria-label="Delivery Pincode"
+                />
+                {pincode && (
+                  <button
+                    type="button"
+                    onClick={handlePincodeClear}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '50%'
+                    }}
+                    title="Clear pincode"
+                    aria-label="Clear pincode"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
               <button 
                 type="submit" 
                 className="premium-btn btn-primary"
-                style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '13px' }}
+                style={{ 
+                  flexShrink: 0, 
+                  height: '44px', 
+                  padding: '0 18px', 
+                  borderRadius: '10px', 
+                  fontSize: '13px', 
+                  fontWeight: 700 
+                }}
               >
                 Check
               </button>
             </form>
 
+            {pincodeError && (
+              <div style={{ fontSize: '12px', color: 'var(--error)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <AlertCircle size={14} />
+                <span>{pincodeError}</span>
+              </div>
+            )}
+
+            {/* Quick check chips */}
+            <div style={{ marginTop: '12px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                Quick Check Locations:
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {[
+                  { pin: '505327', label: '505327 (Jagitial HQ)' },
+                  { pin: '500001', label: '500001 (Hyderabad)' },
+                  { pin: '560001', label: '560001 (Bengaluru)' },
+                  { pin: '400001', label: '400001 (Mumbai)' }
+                ].map(item => (
+                  <button
+                    key={item.pin}
+                    type="button"
+                    onClick={() => handleQuickPincodeSelect(item.pin)}
+                    style={{
+                      border: pincode === item.pin ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                      backgroundColor: pincode === item.pin ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-solid)',
+                      color: pincode === item.pin ? 'var(--primary)' : 'var(--text-muted)',
+                      fontSize: '11px',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {pincodeResult && (
               <div style={{ 
                 marginTop: '12px', 
-                padding: '10px 12px', 
-                borderRadius: '8px', 
+                padding: '12px', 
+                borderRadius: '10px', 
                 backgroundColor: pincodeResult.serviceable ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                border: pincodeResult.serviceable ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
+                border: pincodeResult.serviceable ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)',
                 fontSize: '12px'
               }}>
-                <div style={{ fontWeight: 'bold', color: pincodeResult.serviceable ? 'var(--success)' : 'var(--error)' }}>
-                  {pincodeResult.serviceable ? `Serviceable - ${pincodeResult.locationName}` : 'Unserviceable'}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  gap: '8px',
+                  fontWeight: 700, 
+                  color: pincodeResult.serviceable ? 'var(--success)' : 'var(--error)' 
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {pincodeResult.serviceable ? <Check size={16} strokeWidth={2.5} /> : <AlertCircle size={16} />}
+                    <span>{pincodeResult.serviceable ? `Serviceable • ${pincodeResult.locationName}` : 'Location Currently Unserviceable'}</span>
+                  </div>
+                  {pincodeResult.serviceable && (
+                    <span style={{ 
+                      backgroundColor: pincodeResult.deliveryCharge === 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.15)',
+                      color: pincodeResult.deliveryCharge === 0 ? 'var(--success)' : 'var(--primary)',
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 800
+                    }}>
+                      {pincodeResult.deliveryCharge === 0 ? 'FREE DELIVERY' : `₹${pincodeResult.deliveryCharge} Delivery`}
+                    </span>
+                  )}
                 </div>
-                <div style={{ color: 'var(--text-main)', marginTop: '2px' }}>
+                <div style={{ color: 'var(--text-main)', marginTop: '6px', lineHeight: 1.4 }}>
                   {pincodeResult.message}
                 </div>
-                {pincodeResult.serviceable && (
-                  <div style={{ fontWeight: 600, color: 'var(--primary)', marginTop: '4px' }}>
-                    Estimated Delivery: {getEstimatedDateString(pincodeResult.estimatedDays)}
+                {pincodeResult.serviceable ? (
+                  <div style={{ fontWeight: 600, color: 'var(--primary)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Truck size={14} />
+                    <span>Estimated Delivery: {getEstimatedDateString(pincodeResult.estimatedDays)}</span>
                   </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleWhatsAppInquiry}
+                    style={{
+                      marginTop: '8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: '#128C7E',
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '12px'
+                    }}
+                  >
+                    <MessageCircle size={14} fill="#25D366" />
+                    <span>Ask Store on WhatsApp if delivery can be arranged</span>
+                  </button>
                 )}
               </div>
             )}
