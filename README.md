@@ -9,7 +9,6 @@ Production-grade e-commerce application powered by Cloudflare's edge platform.
 - **Database**: Relational SQLite database on **Cloudflare D1** (`DB` binding).
 - **Object Storage**: Media and asset storage on **Cloudflare R2** (`STORAGE` binding).
 - **Authentication**: Passwordless OTP authentication with session persistence.
-
 ## Project Structure
 
 ```
