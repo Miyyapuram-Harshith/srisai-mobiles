@@ -40,7 +40,7 @@ Production-grade e-commerce application powered by Cloudflare's edge platform.
 
 ### 1. Install Dependencies
 ```bash
-npm install
+npm run
 ```
 
 ### 2. Run Local D1 Migrations and Seeds
