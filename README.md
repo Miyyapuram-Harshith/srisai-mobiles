@@ -1,4 +1,4 @@
-# Sri Sai Mobiles — Cloudflare Architecture
+# Sri Sai Mobiles — Cloudflare Architectur
 
 Production-grade e-commerce application powered by Cloudflare's edge platform.
 
