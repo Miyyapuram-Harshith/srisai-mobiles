@@ -119,40 +119,55 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
     ? new Date(device.originalPurchaseDate).getFullYear() 
     : null;
 
+  // Extract and sanitize specs — ensures NO empty icons or orphaned "mAh" units render
+  const cleanRam = device.ram && device.ram.trim() ? device.ram.trim() : '';
+  const cleanStorage = device.storage && device.storage.trim() ? device.storage.trim() : '';
+  const cleanProcessor = device.processor && device.processor.trim() && device.processor.trim() !== '0'
+    ? device.processor.trim().split(' ')[0]
+    : '';
+  const cleanDisplay = device.display && device.display.trim()
+    ? device.display.trim().split(',')[0]
+    : '';
+  
+  let cleanBattery = '';
+  if (device.battery && device.battery.trim()) {
+    const bMatch = device.battery.match(/\d+/);
+    if (bMatch && parseInt(bMatch[0], 10) >= 500) {
+      cleanBattery = `${bMatch[0]} mAh`;
+    }
+  }
+
+  const cleanCameras = device.cameras && device.cameras.trim() && device.cameras.trim() !== '0'
+    ? device.cameras.trim().split(' ')[0]
+    : '';
+
+  const validSpecs = [
+    cleanRam ? { icon: Layers, text: `${cleanRam} RAM` } : null,
+    cleanStorage ? { icon: Database, text: `${cleanStorage} ROM` } : null,
+    cleanBattery ? { icon: Battery, text: cleanBattery } : null,
+    cleanProcessor ? { icon: Cpu, text: cleanProcessor } : null,
+    cleanDisplay ? { icon: Smartphone, text: cleanDisplay } : null,
+    cleanCameras ? { icon: Camera, text: cleanCameras } : null,
+  ].filter(Boolean) as { icon: React.FC<{ size?: number }>; text: string }[];
+
   return (
     <div 
-      className="glass-card" 
+      className="glass-card product-card-container" 
       onClick={() => navigateTo(`product/${device.id}`)}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        cursor: 'pointer',
-        height: '100%',
-        padding: '16px'
-      }}
     >
       {/* Top Badges */}
-      <div style={{
-        position: 'absolute',
-        top: '12px',
-        left: '12px',
-        right: '12px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        zIndex: 5
-      }}>
+      <div className="product-card-top-badges">
         {/* Classification Badge */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
           <span style={{
-            fontSize: '11px',
+            fontSize: '10px',
             fontWeight: 700,
-            padding: '4px 10px',
+            padding: '3px 8px',
             borderRadius: '20px',
             backgroundColor: typeBadge.bg,
             color: typeBadge.color,
-            border: typeBadge.border
+            border: typeBadge.border,
+            lineHeight: 1.2
           }}>
             {typeBadge.text}
           </span>
@@ -191,12 +206,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
             toggleWishlist(device.id);
           }}
           aria-label={isWishlisted ? `Remove ${device.brand} ${device.modelName} from wishlist` : `Add ${device.brand} ${device.modelName} to wishlist`}
+          className="wishlist-btn"
           style={{
             border: 'none',
             background: 'rgba(15, 23, 42, 0.65)',
             backdropFilter: 'blur(4px)',
             cursor: 'pointer',
-            padding: '8px',
+            padding: 0,
             borderRadius: '50%',
             color: isWishlisted ? 'var(--error)' : 'white',
             display: 'flex',
@@ -208,19 +224,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
           }}
           title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
         >
-          <Heart size={16} fill={isWishlisted ? 'var(--error)' : 'none'} />
+          <Heart size={15} fill={isWishlisted ? 'var(--error)' : 'none'} />
         </button>
       </div>
 
       {/* Product Image */}
-      <div style={{
-        height: '160px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '10px 0',
-        marginTop: '25px'
-      }}>
+      <div className="product-card-img-wrapper">
         <img 
           src={device.images[0] || 'logo.jpg'} 
           alt={`${device.brand} ${device.modelName}`}
@@ -228,81 +237,45 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
           height="160"
           loading="lazy"
           decoding="async"
-          style={{
-            height: '100%',
-            maxWidth: '100%',
-            objectFit: 'contain',
-            transition: 'transform 0.3s ease'
-          }}
           className="product-img"
         />
       </div>
 
       {/* Brand & Name */}
-      <div style={{ marginTop: '12px' }}>
+      <div style={{ marginTop: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
             {device.brand}
           </span>
           {discountPercent > 0 && (
-            <span style={{ fontSize: '10px', color: 'var(--error)', fontWeight: 'bold' }}>
+            <span style={{ fontSize: '10px', color: 'var(--error)', fontWeight: 'bold', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '1px 6px', borderRadius: '4px' }}>
               {discountPercent}% OFF
             </span>
           )}
         </div>
         
-        <h3 style={{
-          fontSize: '15px',
-          fontWeight: 700,
-          margin: '2px 0 6px 0',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }}>
+        <h3 className="product-card-title">
           {device.modelName}
         </h3>
-        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>
           Variant: {device.variant}
         </p>
       </div>
 
-      {/* Specs Summary */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '6px',
-        fontSize: '11px',
-        color: 'var(--text-muted)',
-        backgroundColor: 'var(--bg-subtle)',
-        padding: '8px',
-        borderRadius: '8px',
-        marginBottom: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Layers size={12} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.ram} RAM</span>
+      {/* Specs Summary - Only renders when valid, meaningful specs exist */}
+      {validSpecs.length > 0 && (
+        <div className="product-specs-container">
+          {validSpecs.map((spec, sIdx) => {
+            const Icon = spec.icon;
+            return (
+              <div key={sIdx} className="spec-badge">
+                <Icon size={11} />
+                <span>{spec.text}</span>
+              </div>
+            );
+          })}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Database size={12} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.storage} ROM</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', gridColumn: 'span 2' }}>
-          <Cpu size={12} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.processor.split(' ')[0]}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', gridColumn: 'span 2' }}>
-          <Smartphone size={12} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.display.split(',')[0]}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Battery size={12} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.battery.split(' ')[0]} mAh</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Camera size={12} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{device.cameras.split(' ')[0]}</span>
-        </div>
-      </div>
+      )}
 
       {/* USED Phones Details Panel */}
       {device.deviceType === 'used' && (
@@ -423,30 +396,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
       )}
 
       {/* Pricing and EMI */}
-      <div style={{ margin: 'auto 0 12px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-          <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)' }}>
+      <div className="product-card-pricing" style={{ margin: 'auto 0 10px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
+          <span className="product-card-price">
             ₹{device.offerPrice.toLocaleString('en-IN')}
           </span>
           {device.price > device.offerPrice && (
-            <span style={{ fontSize: '13px', textDecoration: 'line-through', color: 'var(--text-muted)' }}>
+            <span className="product-card-original-price">
               ₹{device.price.toLocaleString('en-IN')}
             </span>
           )}
         </div>
-        <div style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 600, marginTop: '2px' }}>
-          EMI starts at ₹{emiPrice.toLocaleString('en-IN')}/mo* (No Cost EMI)
+        <div className="product-card-emi">
+          EMI from ₹{emiPrice.toLocaleString('en-IN')}/mo*
         </div>
       </div>
 
       {/* Stock Status & Compare */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '12px',
-        fontSize: '12px'
-      }}>
+      <div className="product-card-meta-row">
         {/* Stock Badge */}
         {device.stockCount === 0 ? (
           <span className="badge badge-out">Out of stock</span>
@@ -459,14 +426,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
         {/* Compare Checkbox */}
         <label 
           onClick={(e) => e.stopPropagation()}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            color: isCompared ? 'var(--primary)' : 'var(--text-muted)'
-          }}
+          className="product-card-compare"
         >
           <input 
             type="checkbox" 
@@ -474,29 +434,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
             onChange={handleCompareChange}
             style={{
               cursor: 'pointer',
-              width: '14px',
-              height: '14px',
+              width: '13px',
+              height: '13px',
               accentColor: 'var(--primary)'
             }}
           />
-          <GitCompare size={12} />
+          <GitCompare size={11} />
           <span>Compare</span>
         </label>
       </div>
 
       {/* Action Buttons */}
-      <div className="product-card-actions" style={{ gap: '6px' }}>
+      <div className="product-card-actions">
         <button
           onClick={handleAddToCart}
-          className="premium-btn btn-secondary"
+          className="premium-btn btn-secondary btn-icon-action"
           disabled={device.stockCount === 0}
           aria-label={`Add ${device.brand} ${device.modelName} to cart`}
-          style={{
-            padding: '8px 10px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            opacity: device.stockCount === 0 ? 0.5 : 1
-          }}
           title="Add to Cart"
         >
           <ShoppingCart size={13} />
@@ -504,15 +458,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
 
         <button
           onClick={handleWhatsAppInquiry}
-          className="premium-btn btn-secondary"
+          className="premium-btn btn-secondary btn-icon-action btn-whatsapp"
           aria-label={`Inquire about ${device.brand} ${device.modelName} on WhatsApp`}
-          style={{
-            padding: '8px 10px',
-            borderRadius: '8px',
-            borderColor: '#25D366',
-            color: '#128C7E',
-            backgroundColor: 'rgba(37, 211, 102, 0.08)'
-          }}
           title="Inquire on WhatsApp"
         >
           <MessageCircle size={13} fill="#25D366" style={{ color: '#128C7E' }} />
@@ -520,15 +467,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
 
         <button
           onClick={handleBuyNow}
-          className="premium-btn btn-primary"
+          className="premium-btn btn-primary btn-buy-now"
           disabled={device.stockCount === 0}
-          style={{
-            flex: 1,
-            padding: '8px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            opacity: device.stockCount === 0 ? 0.5 : 1
-          }}
         >
           <span>Buy Now</span>
         </button>
