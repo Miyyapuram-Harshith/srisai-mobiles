@@ -996,12 +996,8 @@ export const App: React.FC = () => {
           {/* Banner Hero */}
           <HeroCarousel />
           
-          {/* Instagram Feed (Top Position) */}
-          <InstagramFeed position="top" />
           {/* Limited Time Countdown sales */}
           <FlashSaleSection />
-          {/* Instagram Feed (Featured Position) */}
-          <InstagramFeed position="featured" />
 
           {/* Mobile Filter & Sort Toolbar */}
           <div className="mobile-toolbar glass">
