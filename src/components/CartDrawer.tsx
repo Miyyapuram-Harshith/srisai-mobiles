@@ -146,7 +146,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   };
 
   const handlePincodeChangeInCheckout = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.trim();
+    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
     setPincode(val);
 
     if (val.length === 6) {
@@ -630,98 +630,98 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     }}>
                       <span style={{ fontSize: '13px', fontWeight: 800 }}>Enter Detailed Address</span>
                       
-                       <div className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Full Name *</label>
-                           <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" name="name" autoCapitalize="words" className="input-field" style={{ padding: '6px' }} required />
-                         </div>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Mobile Number *</label>
-                           <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" name="tel" inputMode="numeric" className="input-field" style={{ padding: '6px' }} required />
-                         </div>
-                       </div>
- 
-                       <div className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Alt Mobile Number</label>
-                           <input type="tel" value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value)} autoComplete="tel" name="alt-tel" inputMode="numeric" className="input-field" style={{ padding: '6px' }} />
-                         </div>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Pincode *</label>
-                           <input type="text" value={pincode} onChange={handlePincodeChangeInCheckout} autoComplete="postal-code" name="pincode" inputMode="numeric" className="input-field" style={{ padding: '6px' }} maxLength={6} required />
-                         </div>
-                       </div>
- 
-                       {pincodeWarning && <div style={{ fontSize: '11px', color: 'var(--error)' }}>{pincodeWarning}</div>}
- 
-                       <div className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Flat / House Number *</label>
-                           <input type="text" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} autoComplete="address-line1" name="house-no" className="input-field" style={{ padding: '6px' }} placeholder="Flat 2A, H.No 2-4-5" required />
-                         </div>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Building / Apartment</label>
-                           <input type="text" value={apartmentName} onChange={(e) => setApartmentName(e.target.value)} autoComplete="address-line2" name="apartment" className="input-field" style={{ padding: '6px' }} placeholder="Sai Residency" />
-                         </div>
-                       </div>
- 
-                       <div className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Street Name *</label>
-                           <input type="text" value={streetName} onChange={(e) => setStreetName(e.target.value)} className="input-field" style={{ padding: '6px' }} placeholder="Main Bazaar Rd" required />
-                         </div>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Landmark</label>
-                           <input type="text" value={landmark} className="input-field" style={{ padding: '6px' }} placeholder="Near Clock Tower" />
-                         </div>
-                       </div>
- 
-                       <div className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Area / Colony *</label>
-                           <input type="text" value={areaColony} onChange={(e) => setAreaColony(e.target.value)} className="input-field" style={{ padding: '6px' }} placeholder="Ganesh Nagar" required />
-                         </div>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>City *</label>
-                           <input type="text" value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2" name="city" className="input-field" style={{ padding: '6px' }} required />
-                         </div>
-                       </div>
- 
-                       <div className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>District *</label>
-                           <input type="text" value={district} onChange={(e) => setDistrict(e.target.value)} className="input-field" style={{ padding: '6px' }} required />
-                         </div>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>State *</label>
-                           <input type="text" value={state} onChange={(e) => setState(e.target.value)} autoComplete="address-level1" name="state" className="input-field" style={{ padding: '6px' }} required />
-                         </div>
-                       </div>
- 
-                       <div>
-                         <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Google Maps Location URL</label>
-                         <input type="url" value={googleMapsLink} onChange={(e) => setGoogleMapsLink(e.target.value)} className="input-field" style={{ padding: '6px' }} placeholder="https://maps.google.com/..." />
-                       </div>
- 
-                       <div className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px' }}>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Delivery Instructions</label>
-                           <input type="text" value={deliveryInstructions} onChange={(e) => setDeliveryInstructions(e.target.value)} className="input-field" style={{ padding: '6px' }} placeholder="Drop at security gate" />
-                         </div>
-                         <div>
-                           <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Time Slot Preference</label>
-                           <select value={preferredTimeSlot} onChange={(e) => setPreferredTimeSlot(e.target.value)} className="input-field" style={{ padding: '5px', fontSize: '11px' }}>
-                             <option value="Anytime (9 AM - 7 PM)">Anytime (9 AM - 7 PM)</option>
-                             <option value="Morning (9 AM - 12 PM)">Morning (9 AM - 12 PM)</option>
-                             <option value="Afternoon (12 PM - 4 PM)">Afternoon (12 PM - 4 PM)</option>
-                             <option value="Evening (4 PM - 7 PM)">Evening (4 PM - 7 PM)</option>
+                      <div className="checkout-form-grid">
+                        <div>
+                          <label className="checkout-label">Full Name *</label>
+                          <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" name="name" autoCapitalize="words" className="input-field" placeholder="Full Name" required />
+                        </div>
+                        <div>
+                          <label className="checkout-label">Mobile Number *</label>
+                          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+ ]/g, '').slice(0, 15))} autoComplete="tel" name="tel" inputMode="numeric" className="input-field" placeholder="10-digit mobile number" required />
+                        </div>
+                      </div>
+
+                      <div className="checkout-form-grid">
+                        <div>
+                          <label className="checkout-label">Alt Mobile Number</label>
+                          <input type="tel" value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value.replace(/[^\d+ ]/g, '').slice(0, 15))} autoComplete="tel" name="alt-tel" inputMode="numeric" className="input-field" placeholder="Optional alternate mobile" />
+                        </div>
+                        <div>
+                          <label className="checkout-label">Pincode *</label>
+                          <input type="text" value={pincode} onChange={handlePincodeChangeInCheckout} autoComplete="postal-code" name="pincode" inputMode="numeric" className="input-field" placeholder="6-digit pincode" maxLength={6} required />
+                        </div>
+                      </div>
+
+                      {pincodeWarning && <div style={{ fontSize: '11px', color: 'var(--error)' }}>{pincodeWarning}</div>}
+
+                      <div className="checkout-form-grid">
+                        <div>
+                          <label className="checkout-label">Flat / House Number *</label>
+                          <input type="text" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} autoComplete="address-line1" name="house-no" className="input-field" placeholder="Flat 2A, H.No 2-4-5" required />
+                        </div>
+                        <div>
+                          <label className="checkout-label">Building / Apartment</label>
+                          <input type="text" value={apartmentName} onChange={(e) => setApartmentName(e.target.value)} autoComplete="address-line2" name="apartment" className="input-field" placeholder="Sai Residency" />
+                        </div>
+                      </div>
+
+                      <div className="checkout-form-grid">
+                        <div>
+                          <label className="checkout-label">Street Name *</label>
+                          <input type="text" value={streetName} onChange={(e) => setStreetName(e.target.value)} className="input-field" placeholder="Main Bazaar Rd" required />
+                        </div>
+                        <div>
+                          <label className="checkout-label">Landmark</label>
+                          <input type="text" value={landmark} onChange={(e) => setLandmark(e.target.value)} className="input-field" placeholder="Near Clock Tower, Opp Big C" />
+                        </div>
+                      </div>
+
+                      <div className="checkout-form-grid">
+                        <div>
+                          <label className="checkout-label">Area / Colony *</label>
+                          <input type="text" value={areaColony} onChange={(e) => setAreaColony(e.target.value)} className="input-field" placeholder="Ganesh Nagar" required />
+                        </div>
+                        <div>
+                          <label className="checkout-label">City *</label>
+                          <input type="text" value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2" name="city" className="input-field" placeholder="City / Town" required />
+                        </div>
+                      </div>
+
+                      <div className="checkout-form-grid">
+                        <div>
+                          <label className="checkout-label">District *</label>
+                          <input type="text" value={district} onChange={(e) => setDistrict(e.target.value)} className="input-field" placeholder="District" required />
+                        </div>
+                        <div>
+                          <label className="checkout-label">State *</label>
+                          <input type="text" value={state} onChange={(e) => setState(e.target.value)} autoComplete="address-level1" name="state" className="input-field" placeholder="State" required />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="checkout-label">Google Maps Location URL</label>
+                        <input type="url" value={googleMapsLink} onChange={(e) => setGoogleMapsLink(e.target.value)} className="input-field" placeholder="https://maps.google.com/..." />
+                      </div>
+
+                      <div className="checkout-form-grid">
+                        <div>
+                          <label className="checkout-label">Delivery Instructions</label>
+                          <input type="text" value={deliveryInstructions} onChange={(e) => setDeliveryInstructions(e.target.value)} className="input-field" placeholder="Drop at security gate" />
+                        </div>
+                        <div>
+                          <label className="checkout-label">Time Slot Preference</label>
+                          <select value={preferredTimeSlot} onChange={(e) => setPreferredTimeSlot(e.target.value)} className="input-field" style={{ fontSize: '13px' }}>
+                            <option value="Anytime (9 AM - 7 PM)">Anytime (9 AM - 7 PM)</option>
+                            <option value="Morning (9 AM - 12 PM)">Morning (9 AM - 12 PM)</option>
+                            <option value="Afternoon (12 PM - 4 PM)">Afternoon (12 PM - 4 PM)</option>
+                            <option value="Evening (4 PM - 7 PM)">Evening (4 PM - 7 PM)</option>
                           </select>
                         </div>
                       </div>
 
                       <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                        <button type="button" onClick={() => setShowNewAddressForm(false)} className="premium-btn btn-secondary" style={{ flex: 1, padding: '6px', fontSize: '12px' }}>Cancel</button>
-                        <button type="submit" className="premium-btn btn-primary" style={{ flex: 1.5, padding: '6px', fontSize: '12px' }}>Save Address</button>
+                        <button type="button" onClick={() => setShowNewAddressForm(false)} className="premium-btn btn-secondary" style={{ flex: 1, padding: '10px', fontSize: '13px' }}>Cancel</button>
+                        <button type="submit" className="premium-btn btn-primary" style={{ flex: 1.5, padding: '10px', fontSize: '13px' }}>Save Address</button>
                       </div>
                     </form>
                   )}
@@ -729,7 +729,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   {/* Payment Select Home Delivery */}
                   <div>
                     <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Select Payment Method</span>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                    <div className="checkout-payment-grid">
                       {[
                         { name: 'Cash On Delivery', key: 'cod' },
                         { name: 'UPI Pay', key: 'upi' },
@@ -745,7 +745,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                             borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: paymentMethod === p.key ? 700 : 'normal'
                           }}
                         >
-                          <input type="radio" checked={paymentMethod === p.key} onChange={() => {}} style={{ accentColor: 'var(--primary)' }} />
+                          <input type="radio" checked={paymentMethod === p.key} onChange={() => setPaymentMethod(p.key as any)} style={{ accentColor: 'var(--primary)' }} />
                           <span>{p.name}</span>
                         </label>
                       ))}
@@ -783,7 +783,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   {/* Payment Select Store Pickup */}
                   <div>
                     <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Select Payment Method</span>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                    <div className="checkout-payment-grid">
                       {[
                         { name: 'Pay at Store Counter', key: 'store_payment' },
                         { name: 'UPI Pay Now', key: 'upi' },
@@ -798,7 +798,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                             borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: paymentMethod === p.key ? 700 : 'normal'
                           }}
                         >
-                          <input type="radio" checked={paymentMethod === p.key} onChange={() => {}} style={{ accentColor: 'var(--primary)' }} />
+                          <input type="radio" checked={paymentMethod === p.key} onChange={() => setPaymentMethod(p.key as any)} style={{ accentColor: 'var(--primary)' }} />
                           <span>{p.name}</span>
                         </label>
                       ))}
