@@ -959,14 +959,33 @@ svg {
 /* Flash Sale Deals Responsive Grid */
 .flash-sale-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
+}
+
+.flash-sale-grid-single {
+  display: flex !important;
+  justify-content: flex-start;
+}
+
+.flash-sale-grid-single > div {
+  width: 100%;
+  max-width: 440px;
 }
 
 @media (max-width: 640px) {
   .flash-sale-grid {
     grid-template-columns: 1fr !important;
     gap: 16px !important;
+  }
+
+  .flash-sale-grid-single {
+    display: flex !important;
+    justify-content: center;
+  }
+
+  .flash-sale-grid-single > div {
+    max-width: 100% !important;
   }
 }
 

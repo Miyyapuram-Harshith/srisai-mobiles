@@ -15,7 +15,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   isOpen, onClose, onOpenLogin, onOpenAddress 
 }) => {
   const { 
-    cart, devices, accessories, updateCartQty, removeFromCart, selectedAddress, setSelectedAddress,
+    cart, devices, accessories, flashSales, updateCartQty, removeFromCart, selectedAddress, setSelectedAddress,
     currentUser, createOrder, navigateTo, addresses, addAddress, storeSettings
   } = useApp();
 
@@ -58,12 +58,23 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     const accessory = !device ? accessories.find(a => a.id === item.deviceId) : null;
     
     if (device) {
+      const activeFlash = flashSales?.find(fs => 
+        fs.deviceId === device.id && 
+        fs.enabled && 
+        new Date(fs.endTime).getTime() > Date.now() && 
+        (fs.stockLimit === 0 || fs.soldCount < fs.stockLimit)
+      );
+      const effectivePrice = activeFlash && activeFlash.discountPercentage > 0
+        ? Math.round(device.price * (1 - activeFlash.discountPercentage / 100))
+        : device.offerPrice;
+
       return {
         ...item,
         name: device.modelName,
         brand: device.brand,
         image: device.images[0] || 'logo.jpg',
-        price: device.offerPrice,
+        price: effectivePrice,
+        isFlashSale: !!activeFlash,
         stockCount: device.stockCount,
         ram: device.ram,
         storage: device.storage,

@@ -4,6 +4,19 @@ import { FlashSale } from '../types';
 import { Plus, Trash, X, Calendar, Flame, AlertCircle, Save } from 'lucide-react';
 import { api } from '../lib/api-client';
 
+// Helper to format Date into local YYYY-MM-DDTHH:mm for datetime-local input
+const toLocalDatetime = (dateInput: string | Date | number): string => {
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export const FlashSaleManager: React.FC = () => {
   const { flashSales, devices, showToast, registerUnsavedChanges, refetchFlashSales } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,16 +68,17 @@ export const FlashSaleManager: React.FC = () => {
 
   const openAddModal = () => {
     setEditingSale(null);
-    setDeviceId(devices[0]?.id || '');
+    const available = devices.filter(d => d.status !== 'archived');
+    setDeviceId(available[0]?.id || '');
     setDiscountPercentage(15);
     setStockLimit(5);
 
     const now = new Date();
-    const future = new Date();
-    future.setHours(now.getHours() + 4);
+    const nowLocal = toLocalDatetime(now);
+    const futureLocal = toLocalDatetime(new Date(now.getTime() + 24 * 3600000)); // Default 24 hours
 
-    setStartTime(now.toISOString().substring(0, 16));
-    setEndTime(future.toISOString().substring(0, 16));
+    setStartTime(nowLocal);
+    setEndTime(futureLocal);
     setEnabled(true);
     setIsModalOpen(true);
   };
@@ -74,10 +88,27 @@ export const FlashSaleManager: React.FC = () => {
     setDeviceId(fs.deviceId);
     setDiscountPercentage(fs.discountPercentage);
     setStockLimit(fs.stockLimit);
-    setStartTime(new Date(fs.startTime).toISOString().substring(0, 16));
-    setEndTime(new Date(fs.endTime).toISOString().substring(0, 16));
+    setStartTime(toLocalDatetime(fs.startTime));
+    setEndTime(toLocalDatetime(fs.endTime));
     setEnabled(fs.enabled);
     setIsModalOpen(true);
+  };
+
+  const handleStartTimeChange = (newVal: string) => {
+    setStartTime(newVal);
+    if (newVal) {
+      const startMs = new Date(newVal).getTime();
+      const endMs = new Date(endTime).getTime();
+      if (isNaN(endMs) || endMs <= startMs) {
+        setEndTime(toLocalDatetime(new Date(startMs + 24 * 3600000)));
+      }
+    }
+  };
+
+  const setDurationPreset = (hours: number) => {
+    const baseMs = startTime ? new Date(startTime).getTime() : Date.now();
+    const newEndMs = baseMs + hours * 3600000;
+    setEndTime(toLocalDatetime(new Date(newEndMs)));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -88,8 +119,38 @@ export const FlashSaleManager: React.FC = () => {
       return;
     }
 
+    const nowMs = Date.now();
+    const startMs = new Date(startTime).getTime();
+    const endMs = new Date(endTime).getTime();
+
+    if (isNaN(startMs) || isNaN(endMs)) {
+      alert('Please enter valid start and end dates.');
+      return;
+    }
+
+    // Minimum start time check: cannot be in the past for new sales (allow 60s buffer)
+    if (!editingSale && startMs < nowMs - 60000) {
+      alert('Start time cannot be in the past. It must be set from now onwards.');
+      return;
+    }
+
+    if (endMs <= startMs) {
+      alert('End time must be after the start time.');
+      return;
+    }
+
+    if (endMs <= nowMs) {
+      alert('End time cannot be in the past. It must be in the future.');
+      return;
+    }
+
     if (discountPercentage <= 0 || discountPercentage >= 100) {
       alert('Discount percentage must be between 1 and 99.');
+      return;
+    }
+
+    if (stockLimit <= 0) {
+      alert('Total stock limit must be at least 1.');
       return;
     }
 
@@ -144,11 +205,12 @@ export const FlashSaleManager: React.FC = () => {
       for (const fs of localSales) {
         const dbSale = {
           device_id: fs.deviceId,
+          product_id: fs.deviceId,
           discount_percentage: fs.discountPercentage,
           stock_limit: fs.stockLimit,
           start_time: fs.startTime,
           end_time: fs.endTime,
-          enabled: fs.enabled,
+          enabled: fs.enabled ? 1 : 0,
           sold_count: fs.soldCount
         };
         
@@ -182,6 +244,10 @@ export const FlashSaleManager: React.FC = () => {
     if (now > end) return { text: 'Ended', color: 'var(--text-muted)' };
     return { text: 'Active Now', color: 'var(--success)' };
   };
+
+  const selectedDevice = devices.find(d => d.id === deviceId);
+  const calculatedDealPrice = selectedDevice ? Math.round(selectedDevice.price * (1 - discountPercentage / 100)) : 0;
+  const customerSavings = selectedDevice ? selectedDevice.price - calculatedDealPrice : 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -401,38 +467,115 @@ export const FlashSaleManager: React.FC = () => {
             {/* Form */}
             <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Select Target Device *</label>
-                <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)} className="input-field" style={{ padding: '10px' }} required>
+                <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Select Target Device *</label>
+                <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)} className="input-field" style={{ padding: '10px', fontSize: '13px' }} required>
                   {devices.filter(d => d.status !== 'archived').map(d => (
-                    <option key={d.id} value={d.id}>{d.modelName} ({d.brand})</option>
+                    <option key={d.id} value={d.id}>
+                      {d.brand} {d.modelName} ({d.variant}) — ₹{d.price.toLocaleString('en-IN')}
+                    </option>
                   ))}
                 </select>
               </div>
 
+              {/* Live Pricing Preview Box */}
+              {selectedDevice && (
+                <div style={{
+                  backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '12px'
+                }}>
+                  <div>
+                    <span style={{ fontWeight: 700, display: 'block' }}>{selectedDevice.brand} {selectedDevice.modelName}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Original MRP: ₹{selectedDevice.price.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 800, color: 'var(--error)', fontSize: '15px' }}>
+                      Deal: ₹{calculatedDealPrice.toLocaleString('en-IN')}
+                    </div>
+                    <div style={{ color: 'var(--success)', fontWeight: 700, fontSize: '11px' }}>
+                      Saves ₹{customerSavings.toLocaleString('en-IN')} ({discountPercentage}% OFF)
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Discount % *</label>
+                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Discount % *</label>
                   <input type="number" value={discountPercentage} onChange={(e) => setDiscountPercentage(Number(e.target.value))} className="input-field" min={1} max={99} required />
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Total Stock Limit *</label>
+                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Total Stock Limit *</label>
                   <input type="number" value={stockLimit} onChange={(e) => setStockLimit(Number(e.target.value))} className="input-field" min={1} required />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Start Schedule *</label>
-                  <input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="input-field" style={{ padding: '8px' }} required />
+                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                    Start Schedule (Min: Now) *
+                  </label>
+                  <input 
+                    type="datetime-local" 
+                    value={startTime} 
+                    min={editingSale ? undefined : toLocalDatetime(new Date())}
+                    onChange={(e) => handleStartTimeChange(e.target.value)} 
+                    className="input-field" 
+                    style={{ padding: '8px', fontSize: '13px' }} 
+                    required 
+                  />
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px', display: 'block' }}>
+                    Cannot pick past time.
+                  </span>
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>End Schedule *</label>
-                  <input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="input-field" style={{ padding: '8px' }} required />
+                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                    End Schedule (Expiry) *
+                  </label>
+                  <input 
+                    type="datetime-local" 
+                    value={endTime} 
+                    min={startTime || toLocalDatetime(new Date())}
+                    onChange={(e) => setEndTime(e.target.value)} 
+                    className="input-field" 
+                    style={{ padding: '8px', fontSize: '13px' }} 
+                    required 
+                  />
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px', display: 'block' }}>
+                    Must be after start schedule.
+                  </span>
                 </div>
               </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: '8px 0', fontSize: '13px' }}>
-                <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} style={{ width: '16px', height: '16px' }} />
+              {/* Quick Duration Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>Quick Duration:</span>
+                {[
+                  { label: '+4 Hours', hours: 4 },
+                  { label: '+12 Hours', hours: 12 },
+                  { label: '+24 Hours (1 Day)', hours: 24 },
+                  { label: '+3 Days', hours: 72 },
+                  { label: '+7 Days', hours: 168 }
+                ].map(preset => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => setDurationPreset(preset.hours)}
+                    className="premium-btn btn-secondary"
+                    style={{ padding: '3px 8px', fontSize: '11px', borderRadius: '6px' }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: '4px 0', fontSize: '13px' }}>
+                <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }} />
                 <span>Activate countdown clock now</span>
               </label>
 

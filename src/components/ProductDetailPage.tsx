@@ -15,7 +15,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
   const { 
     devices, wishlist, toggleWishlist, comparisonList, addToCompare, 
     removeFromCompare, addToCart, navigateTo, addRecentlyViewed, 
-    recentlyViewed, incrementDeviceViews, whatsAppSettings, trackWhatsAppClick
+    recentlyViewed, incrementDeviceViews, whatsAppSettings, trackWhatsAppClick, flashSales
   } = useApp();
 
   const device = devices.find(d => d.id === deviceId);
@@ -92,8 +92,19 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
 
   const isWishlisted = wishlist.includes(device.id);
   const isCompared = comparisonList.includes(device.id);
-  const discountPercent = Math.round(((device.price - device.offerPrice) / device.price) * 100);
-  const emiPrice = Math.round(device.offerPrice / 12);
+
+  const activeFlash = flashSales?.find(fs => 
+    fs.deviceId === device.id && 
+    fs.enabled && 
+    new Date(fs.endTime).getTime() > Date.now() &&
+    (fs.stockLimit === 0 || fs.soldCount < fs.stockLimit)
+  );
+  const effectivePrice = activeFlash && activeFlash.discountPercentage > 0
+    ? Math.round(device.price * (1 - activeFlash.discountPercentage / 100))
+    : device.offerPrice;
+
+  const discountPercent = Math.round(((device.price - effectivePrice) / device.price) * 100);
+  const emiPrice = Math.round(effectivePrice / 12);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
@@ -178,7 +189,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
     const number = whatsAppSettings?.salesNumber || '9876543210';
     const link = window.location.href;
     
-    const messageText = `Hello Sri Sai Mobiles,\nI am interested in:\n\nProduct: ${device.brand} ${device.modelName}\nStorage Variant: ${device.variant}\nPrice: ₹${device.offerPrice.toLocaleString('en-IN')}\nLink: ${link}\n\nCan you provide availability details?`;
+    const messageText = `Hello Sri Sai Mobiles,\nI am interested in:\n\nProduct: ${device.brand} ${device.modelName}\nStorage Variant: ${device.variant}\nPrice: ₹${effectivePrice.toLocaleString('en-IN')}${activeFlash ? ' (Flash Deal)' : ''}\nLink: ${link}\n\nCan you provide availability details?`;
 
     const url = `https://api.whatsapp.com/send?phone=${countryCode}${number}&text=${encodeURIComponent(messageText)}`;
     window.open(url, '_blank');
@@ -601,16 +612,33 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ deviceId }
             width: '100%',
             maxWidth: '100%'
           }}>
+            {activeFlash && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: 'var(--error)',
+                padding: '4px 10px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 800,
+                marginBottom: '10px'
+              }}>
+                <span>⚡ Limited Time Flash Deal • Save {activeFlash.discountPercentage}%</span>
+              </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 'clamp(26px, 6vw, 32px)', fontWeight: 900, color: 'var(--text-main)' }}>
-                ₹{device.offerPrice.toLocaleString('en-IN')}
+              <span style={{ fontSize: 'clamp(26px, 6vw, 32px)', fontWeight: 900, color: activeFlash ? 'var(--error)' : 'var(--text-main)' }}>
+                ₹{effectivePrice.toLocaleString('en-IN')}
               </span>
-              {device.price > device.offerPrice && (
+              {device.price > effectivePrice && (
                 <>
                   <span style={{ fontSize: '15px', textDecoration: 'line-through', color: 'var(--text-muted)' }}>
                     ₹{device.price.toLocaleString('en-IN')}
                   </span>
-                  <span className="badge badge-sale" style={{ fontSize: '11px' }}>
+                  <span className="badge badge-sale" style={{ fontSize: '11px', backgroundColor: activeFlash ? 'var(--error)' : undefined }}>
                     {discountPercent}% OFF
                   </span>
                 </>
