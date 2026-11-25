@@ -435,7 +435,7 @@ export const CustomerOrdersPage: React.FC = () => {
   ) : `https://wa.me/91${cleanPhone}`;
 
   return (
-    <div className="animate-fade" style={{ padding: '20px 0', maxWidth: '1080px', margin: '0 auto', width: '100%' }}>
+    <div className="animate-fade customer-orders-page" style={{ maxWidth: '1080px', margin: '0 auto', width: '100%' }}>
       
       {/* ================= BREADCRUMB & PAGE HEADER ================= */}
       <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -453,20 +453,13 @@ export const CustomerOrdersPage: React.FC = () => {
         </div>
 
         {/* Header Title Row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div className="orders-header-row">
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Package size={26} style={{ color: 'var(--primary)' }} />
+            <h1 className="orders-header-title">
+              <Package size={24} style={{ color: 'var(--primary)', flexShrink: 0 }} />
               <span>My Orders & Real-Time Tracking</span>
               {customerOrders.length > 0 && (
-                <span style={{
-                  fontSize: '12px',
-                  fontWeight: 800,
-                  backgroundColor: 'rgba(59, 130, 246, 0.12)',
-                  color: 'var(--primary)',
-                  padding: '2px 10px',
-                  borderRadius: '14px'
-                }}>
+                <span className="orders-count-badge">
                   {customerOrders.length} {customerOrders.length === 1 ? 'Order' : 'Orders'}
                 </span>
               )}
@@ -476,11 +469,10 @@ export const CustomerOrdersPage: React.FC = () => {
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="orders-action-btn-group">
             <button
               onClick={() => loadOrders()}
-              className="premium-btn btn-secondary"
-              style={{ padding: '8px 14px', borderRadius: '12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              className="premium-btn btn-secondary orders-header-btn"
               title="Refresh tracking status"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -489,8 +481,7 @@ export const CustomerOrdersPage: React.FC = () => {
 
             <button
               onClick={() => navigateTo('home')}
-              className="premium-btn btn-secondary"
-              style={{ padding: '8px 14px', borderRadius: '12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              className="premium-btn btn-secondary orders-header-btn"
             >
               <ArrowLeft size={14} />
               <span>Back to Store</span>
@@ -622,14 +613,7 @@ export const CustomerOrdersPage: React.FC = () => {
             <div style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px', letterSpacing: '0.5px' }}>
               Select Order ({customerOrders.length} placed)
             </div>
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              overflowX: 'auto',
-              paddingBottom: '8px',
-              scrollSnapType: 'x mandatory',
-              WebkitOverflowScrolling: 'touch'
-            }}>
+            <div className="orders-carousel">
               {customerOrders.map(o => {
                 const isSelected = selectedOrder?.id === o.id;
                 const firstItem = o.items?.[0];
@@ -738,11 +722,10 @@ export const CustomerOrdersPage: React.FC = () => {
                 </div>
 
                 {/* Quick Action Buttons */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <div className="orders-top-card-actions">
                   <button
                     onClick={() => handlePrintInvoice(selectedOrder)}
-                    className="premium-btn btn-secondary"
-                    style={{ fontSize: '12px', padding: '9px 14px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    className="premium-btn btn-secondary orders-action-btn"
                     title="Download or Print Tax Invoice Receipt"
                   >
                     <Printer size={15} />
@@ -753,19 +736,7 @@ export const CustomerOrdersPage: React.FC = () => {
                     href={whatsappInquiryUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="premium-btn"
-                    style={{
-                      fontSize: '12px',
-                      padding: '9px 16px',
-                      borderRadius: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      backgroundColor: '#25D366',
-                      color: '#fff',
-                      fontWeight: 700,
-                      textDecoration: 'none'
-                    }}
+                    className="premium-btn orders-action-btn orders-whatsapp-btn"
                   >
                     <MessageCircle size={15} />
                     <span>WhatsApp Help</span>
@@ -1085,6 +1056,7 @@ export const CustomerOrdersPage: React.FC = () => {
                 {selectedOrder.items?.map((item, idx) => (
                   <div 
                     key={idx}
+                    className="orders-item-row"
                     style={{
                       display: 'flex',
                       alignItems: 'center',

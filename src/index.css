@@ -1438,6 +1438,167 @@ svg {
   }
 }
 
+/* ==========================================================================
+   CHECKOUT DETAILS & MY ORDERS PAGE - MOBILE FIRST & RESPONSIVE POLISH
+   ========================================================================== */
+
+/* Checkout Address Form & Payment Grid */
+.checkout-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.checkout-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.checkout-payment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 8px;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .checkout-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+}
+
+/* My Orders Page Responsive Layout */
+.customer-orders-page {
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+
+.orders-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.orders-header-title {
+  font-size: clamp(19px, 3.5vw, 24px);
+  font-weight: 800;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.orders-count-badge {
+  font-size: 12px;
+  font-weight: 800;
+  background-color: rgba(59, 130, 246, 0.12);
+  color: var(--primary);
+  padding: 2px 10px;
+  border-radius: 14px;
+}
+
+.orders-action-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.orders-header-btn {
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+}
+
+.orders-carousel {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.orders-top-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.orders-action-btn {
+  font-size: 12px;
+  padding: 9px 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  font-weight: 700;
+}
+
+.orders-whatsapp-btn {
+  background-color: #25D366;
+  color: #fff;
+  text-decoration: none;
+}
+
+.orders-whatsapp-btn:hover {
+  background-color: #20ba5a;
+  color: #fff;
+}
+
+/* Mobile Orders Enhancements (<= 640px) */
+@media (max-width: 640px) {
+  .customer-orders-page {
+    padding: 16px 8px;
+  }
+
+  .orders-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .orders-action-btn-group {
+    width: 100%;
+  }
+
+  .orders-header-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .orders-top-card-actions {
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .orders-action-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .orders-item-row {
+    gap: 10px !important;
+  }
+}
+
 
 
 
