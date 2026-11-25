@@ -27,6 +27,8 @@ export const HeroCarousel: React.FC = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const timerRef = useRef<any>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
 
   const resetTimer = () => {
     if (timerRef.current) {
@@ -49,6 +51,26 @@ export const HeroCarousel: React.FC = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [currentIndex, activeBanners.length]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    const distance = touchStartX.current - touchEndX.current;
+    if (distance > 45) {
+      handleNext();
+    } else if (distance < -45) {
+      handlePrev();
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
 
   if (activeBanners.length === 0) {
     return (
@@ -101,6 +123,9 @@ export const HeroCarousel: React.FC = () => {
         boxShadow: 'var(--glass-shadow)'
       }}
       className="hero-carousel-container"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Slides wrapper */}
       <div 
@@ -160,7 +185,7 @@ export const HeroCarousel: React.FC = () => {
                 color: 'white',
                 maxWidth: '600px'
               }}
-              className="animate-slide"
+              className="animate-slide banner-overlay-text"
             >
               <h2 style={{
                 fontSize: '32px',
@@ -173,6 +198,7 @@ export const HeroCarousel: React.FC = () => {
                 {banner.title}
               </h2>
               <div 
+                className="banner-cta"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -257,29 +283,17 @@ export const HeroCarousel: React.FC = () => {
 
       {/* Pagination Dots */}
       {activeBanners.length > 1 && (
-        <div style={{
-          position: 'absolute',
-          bottom: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10,
-          display: 'flex',
-          gap: '8px'
-        }}>
+        <div className="carousel-indicators-container">
           {activeBanners.map((_, index) => (
             <button
               key={index}
-              onClick={() => handleDotClick(index)}
-              aria-label={`Go to slide ${index + 1}`}
-              style={{
-                border: 'none',
-                width: index === currentIndex ? '24px' : '8px',
-                height: '8px',
-                borderRadius: '4px',
-                backgroundColor: index === currentIndex ? 'var(--primary)' : 'rgba(255,255,255,0.4)',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDotClick(index);
               }}
+              aria-label={`Go to slide ${index + 1}`}
+              className={`carousel-indicator-dot ${index === currentIndex ? 'active' : ''}`}
             />
           ))}
         </div>

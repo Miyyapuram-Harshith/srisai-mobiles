@@ -234,7 +234,7 @@ export const FlashSaleSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid-responsive">
+      <div className="flash-sale-grid">
         {activeSales.map(sale => {
           const device = devices.find(d => d.id === sale.deviceId);
           if (!device) return null;
