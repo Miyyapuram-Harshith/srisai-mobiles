@@ -1126,32 +1126,36 @@ svg {
 
 .carousel-indicator-dot {
   min-height: 0 !important;
-  max-height: 6px !important;
-  height: 6px !important;
-  min-width: 0 !important;
+  max-height: 8px !important;
+  height: 8px !important;
+  width: 8px !important;
+  min-width: 8px !important;
   padding: 0 !important;
   margin: 0 !important;
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
-  border-radius: 3px !important;
+  border-radius: 50% !important;
   cursor: pointer;
-  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease !important;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, transform 0.2s ease !important;
 }
 
 .carousel-indicator-dot.active {
   width: 24px !important;
+  border-radius: 4px !important;
   background-color: var(--primary) !important;
   box-shadow: 0 0 8px rgba(59, 130, 246, 0.6) !important;
+  transform: scaleY(1) !important;
 }
 
 .carousel-indicator-dot:not(.active) {
   width: 8px !important;
-  background-color: rgba(255, 255, 255, 0.4) !important;
+  background-color: rgba(255, 255, 255, 0.45) !important;
 }
 
 .carousel-indicator-dot:not(.active):hover {
-  background-color: rgba(255, 255, 255, 0.7) !important;
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  transform: scale(1.2) !important;
 }
 
 /* Banners overlay titles sizing */
@@ -1196,17 +1200,21 @@ svg {
   }
 
   .carousel-indicator-dot {
-    height: 4px !important;
-    max-height: 4px !important;
-    border-radius: 2px !important;
+    height: 8px !important;
+    max-height: 8px !important;
+    min-height: 8px !important;
+    width: 8px !important;
+    min-width: 8px !important;
+    border-radius: 50% !important;
   }
 
   .carousel-indicator-dot.active {
-    width: 18px !important;
+    width: 20px !important;
+    border-radius: 4px !important;
   }
 
   .carousel-indicator-dot:not(.active) {
-    width: 6px !important;
+    width: 8px !important;
   }
 }
 
