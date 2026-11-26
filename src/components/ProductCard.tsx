@@ -122,13 +122,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
   // Extract and sanitize specs — ensures NO empty icons or orphaned "mAh" units render
   const cleanRam = device.ram && device.ram.trim() ? device.ram.trim() : '';
   const cleanStorage = device.storage && device.storage.trim() ? device.storage.trim() : '';
-  const cleanProcessor = device.processor && device.processor.trim() && device.processor.trim() !== '0'
-    ? device.processor.trim().split(' ')[0]
+
+  // Processor: skip if empty, '0', '-', 'N/A', or less than 2 chars
+  const rawProcessor = device.processor ? device.processor.trim() : '';
+  const cleanProcessor = rawProcessor && rawProcessor !== '0' && rawProcessor !== '-' && rawProcessor !== 'N/A' && rawProcessor.length > 1
+    ? rawProcessor.split(' ')[0]
     : '';
-  const cleanDisplay = device.display && device.display.trim()
-    ? device.display.trim().split(',')[0]
+
+  // Display: skip if empty, '-', 'N/A', or no digit (needs an actual size number)
+  const rawDisplay = device.display ? device.display.trim() : '';
+  const cleanDisplay = rawDisplay && rawDisplay !== '-' && rawDisplay !== 'N/A' && /\d/.test(rawDisplay)
+    ? rawDisplay.split(',')[0]
     : '';
-  
+
   let cleanBattery = '';
   if (device.battery && device.battery.trim()) {
     const bMatch = device.battery.match(/\d+/);
@@ -137,8 +143,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ device }) => {
     }
   }
 
-  const cleanCameras = device.cameras && device.cameras.trim() && device.cameras.trim() !== '0'
-    ? device.cameras.trim().split(' ')[0]
+  // Cameras: skip if empty, '0', '-', 'N/A', or no digit
+  const rawCameras = device.cameras ? device.cameras.trim() : '';
+  const cleanCameras = rawCameras && rawCameras !== '0' && rawCameras !== '-' && rawCameras !== 'N/A' && /\d/.test(rawCameras)
+    ? rawCameras.split(' ')[0]
     : '';
 
   const validSpecs = [
